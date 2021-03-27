@@ -1,0 +1,1 @@
+These functions parse non-rectangular files (like csv or fixed-width format) into long (so-called melted) format. They specify the overall structure of the file, and how each line is divided up into fields.

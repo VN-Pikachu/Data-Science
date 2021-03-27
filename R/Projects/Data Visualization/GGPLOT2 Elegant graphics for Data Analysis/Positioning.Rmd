@@ -1,0 +1,173 @@
+---
+title: "Positioning"
+author: "Pikachu"
+date: "11/2/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# 7.1 Introduction
+
+* Position adjustment: position_stack(), position_dodge(), ...
+* Position scales: scale_x_continuous(breaks, labels), ...
+* Facetting
+* Coordinate system
+
+# 7.2 Facetting
+## 7.2.1 Facet wrap
+
+```{r}
+iris %>%
+  ggplot(aes(Sepal.Length, Sepal.Width, color = Species)) + 
+  geom_point() + 
+  facet_wrap(~Species, ncol = 2)
+```
+
+## 7.2.2  Facet grid
+
+```{r}
+mpg %>%
+  ggplot(aes(displ, hwy)) +
+  geom_point() + 
+  facet_grid(class ~ cyl)
+```
+
+## 7.2.3 Controlling scale
+
+• scales = "fixed": x and y scales are fixed across all panels.
+• scales = "free x": the x scale is free, and the y scale is fixed.
+• scales = "free y": the y scale is free, and the x scale is fixed.
+• scales = "free": x and y scales vary across panels.
+
+Fixed scales make it easier to see patterns across panels; free scales make
+it easier to see patterns within panels.
+
+```{r}
+mpg2 %>%
+  ggplot(aes(cty, model)) +
+  geom_point() + 
+  facet_grid(manufacturer ~ ., scales = 'free', space = 'free') +
+  theme(strip.text.y = element_text(angle = 0))
+```
+## 7.2.4 Missing Facetting Variables
+
+If you are using facetting on a plot with multiple datasets, what happens
+when one of those datasets is missing the facetting variables?
+
+```{r}
+#remove column species from `iris`
+iris1 <- iris %>% mutate(Species = NULL)
+```
+
+Here ggplot will do what you expect:
+it will display the map in every facet: missing facetting variables are treated
+like they have all values.
+
+
+```{r}
+ggplot(iris, aes(Sepal.Length, Sepal.Width)) + 
+ 
+  geom_point(data = iris1, color = 'grey80') + 
+  geom_point(aes(color = Species)) +         #Display original data in every facet
+  facet_wrap(~ Species)
+```
+## 7.2.5 Grouping vs Faceting
+Facetting is an alternative to using aesthetics (like colour, shape or size) to
+differentiate groups. Both techniques have strengths and weaknesses, based
+around the relative positions of the subsets. With facetting, each group is
+quite far apart in its own panel, and there is no overlap between the groups.
+This is good if the groups overlap a lot, but it does make small differences
+harder to see. When using aesthetics to differentiate groups, the groups are
+close together and may overlap, but small differences are easier to see.
+
+
+## 7.2.6 Continous Variables
+
+To facet continuous variables, you must first discretise them. ggplot2 provides
+three helper functions to do so:
+• Divide the data into n bins each of the same length: `cut interval(x, n)`
+• Divide the data into bins of width width: `cut width(x, width)`.
+• Divide the data into n bins each containing (approximately) the same
+number of points: `cut number(x, n = 10)`.
+
+## 7.2.7 Exercises
+1. Diamonds: display the distribution of price conditional on cut and carat.
+Try facetting by cut and grouping by carat. Try facetting by carat and
+grouping by cut. Which do you prefer?
+
+```{r}
+diamonds %>%
+  ggplot(aes(price, group = carat)) +
+  geom_histogram(binwidth = 250) +
+  facet_wrap(~ cut)
+```
+
+2. Diamonds: compare the relationship between price and carat for each
+colour. What makes it hard to compare the groups? Is grouping better
+or facetting? If you use facetting, what annotation might you add to make
+it easier to see the differences between panels?
+```{r}
+diamonds %>%
+  ggplot(aes(carat, price, color = color)) +
+  geom_point()
+
+diamonds %>% 
+  ggplot(aes(carat, price)) + 
+  geom_point(alpha = .2) + 
+  facet_wrap(~ color)
+```
+
+3. Why is `facet wrap()` generally more useful than `facet grid()`?
+
+4. Recreate the following plot. It facets mpg2 by class, overlaying a smooth
+curve fit to the full dataset.
+
+```{r}
+mpg2 %>%
+  ggplot(aes(displ, hwy)) + 
+  geom_point() +
+  geom_smooth(data = mpg2 %>% mutate(class = NULL)) + 
+  facet_wrap(~ class) 
+```
+# 7.3 Coordinate System
+
+There are two types of coordinate system. Linear coordinate systems preserve the shape of geoms:
+• coord cartesian(): the default Cartesian coordinate system, where the 2d
+position of an element is given by the combination of the x and y positions.
+• coord flip(): Cartesian coordinate system with x and y axes flipped.
+• coord fixed(): Cartesian coordinate system with a fixed aspect ratio.
+On the other hand, non-linear coordinate systems can change the shapes:
+a straight line may no longer be straight. The closest distance between two
+points may no longer be a straight line.
+• coord map()/coord quickmap(): Map projections.
+• coord polar(): Polar coordinates.
+• coord trans(): Apply arbitrary transformations to x and y positions, after
+the data has been processed by the stat
+
+# 7.4 Linear Coordinate System
+
+There are three linear coordinate systems: `coord cartesian()`, `coord flip()`,
+`coord fixed()`.
+
+## 7.4.1 Zooming into a Plot with `coord_cartesian()`
+
+## 7.4.2 Flipping the Axes with `coord_flip()`
+
+## 7.4.3 Equal scales with `coord_fixed()`
+
+# 7.5 Non-linear Coordinate System
+
+## 7.5.1 Transformations with `coord_trans()`
+
+
+Transforming at the
+coordinate system level occurs after the statistics have been computed, and
+does affect the shape of the geom.
+
+## 7.5.2 Polar Coordinates with `coord_polar()`
+
+## 7.5.3 Map Projections with `coord_map()`
+

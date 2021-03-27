@@ -1,0 +1,5 @@
+Change factor levels, while preserving order (as much as possible).
+
+Every function in this family can be done using only 2 functions: 
+* fct_recode()
+* fct_relabel()

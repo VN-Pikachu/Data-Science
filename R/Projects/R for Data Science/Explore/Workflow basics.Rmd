@@ -1,0 +1,32 @@
+---
+title: "Workflow basics"
+author: "Pikachu"
+date: "11/26/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# 4.1 Coding basics
+
+In RStudio, use `Alt` + `-` to create ` <- `.  
+Notice that RStudio automagically surrounds `<-` with spaces, which is a good code formatting practice.
+
+# 4.2 What's in a name?
+Object names must start with a letter, and can only contain letters, numbers,` _` and `.`. You want your object names to be descriptive, so you’ll need a convention for multiple words.
+
+```{r}
+snake_case <- 1
+camelCase <- 1
+this.is.dot.case <- 1
+```
+
+# 4.3 Calling Functions
+
+```{r}
+seq
+```
+
+

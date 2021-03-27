@@ -1,0 +1,4 @@
+parsing date-time: (from simple that can do a few things to most complicated, can do most of things):
+1. readr: parse_date, parse_time, parse_datetime
+2. lubridate: ymd, ymd_hms, ...
+3. lubridate: parse_date_time

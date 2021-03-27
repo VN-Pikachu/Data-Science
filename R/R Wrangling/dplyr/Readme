@@ -1,0 +1,8 @@
+dplyr::across can only used inside a dplyr verbs (e.g: mutate, count, ....)
+
+
+e.g: it can't not be used inside tidyr verbs 
+------------------------
+<data-masking> means you have to use dplyr::across to use dplyr::select style
+
+<tidy-select> means you can you the same style of selecting like dplyr::select (i.e: does not have to use dplyr::across)

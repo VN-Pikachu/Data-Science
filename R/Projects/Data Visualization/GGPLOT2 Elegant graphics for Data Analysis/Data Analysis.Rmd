@@ -1,0 +1,152 @@
+---
+title: "Data Analysis"
+author: "Pikachu"
+date: "11/23/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r echo = FALSE} 
+library(tidyverse)
+library(patchwork)
+```
+
+## 9.3.3 Exercises
+
+2. How can you convert back and forth between the `economics` and
+`economics long` datasets built into ggplot2?
+
+```{r}
+# from long to wide
+ economics_long %>% 
+  mutate(value = value + value01, value01 = NULL) %>% 
+  pivot_wider(names_from = variable, values_from = value)
+```
+
+```{r}
+# from long to wide
+economics %>% 
+  pivot_longer(!date, names_to = 'variable', values_to = 'val') %>%
+  mutate(value = trunc(val), value01 = val - value) %>%              # Separate the integer and float point part
+  mutate(val = NULL) %>%                                             # Remove column `val`
+  arrange(variable, date)
+```
+
+# 9.5 Case studies
+
+## 9.5.1 Blood pressure
+
+The first step when tidying a new dataset is always to identify the variables.
+Look at the following simulated dataset.  
+There are 6 variables:  name, age, start date, week, systolic & diastolic blood pressure.
+```{r}
+bpd <- readr::read_table(
+"name age      start  week1  week2  week3
+Anne  35 2014-03-27 100/80 100/75 120/90
+Ben   41 2014-03-09 110/65 100/65 135/70
+Carl  33 2014-04-02 125/80  <NA>   <NA>
+", na = "<NA>")
+
+bpd
+```
+```{r}
+# Tidy dataset
+bpd_1 <- bpd %>% pivot_longer(
+  starts_with('week'),
+  names_prefix = 'week',
+  names_to = 'week',
+  values_to = 'bp',
+  names_transform = list(week = as.integer)
+  ) %>% separate('bp', c('sys', 'dias'), convert = T) %>% 
+  arrange(name, week)
+
+bpd_1
+```
+
+You might notice that there’s some repetition in this dataset: if you know
+the name, then you also know the age and start date. This reflects a third
+condition of tidyness that I don’t discuss here: each data frame should contain
+one and only one data set. Here there are really two datasets: information
+about each person that doesn’t change over time, and their weekly blood
+pressure measurements. 
+
+```{r}
+# assign a unqiue id for each patient
+bpd_group <- bpd_1 %>% group_by(name, age, start) %>% mutate(id = cur_group_id()) %>% ungroup()
+
+bpd_group
+```
+
+```{r}
+# Information about each person
+information <- bpd_group %>% distinct(id, name, age, start)
+information
+```
+
+```{r}
+# Weekly blood pressure
+weekly_bp <- bpd_group %>% select(id, sys, dias)
+weekly_bp
+```
+```{r}
+# You can restore the original dataset by joining 2 dataset
+
+information %>% right_join(weekly_bp, by = 'id') %>%
+  mutate(id = NULL) # remove column id
+
+```
+
+## 9.5.2 Test scores
+Imagine you’re interested in the effect of an intervention on test scores. You’ve
+collected the following data. What are the variables?
+
+```{r}
+scores <- dplyr::data_frame(
+person = rep(c("Greg", "Sally", "Sue"), each = 2),
+time = rep(c("pre", "post"), 3),
+test1 = round(rnorm(6, mean = 80, sd = 4), 0),
+test2 = round(jitter(test1, 15), 0)
+)
+
+scores
+```
+There are 4 variables: person name, test name, pre score and post score
+
+```{r}
+scores_tidy <- scores %>% 
+  pivot_longer(
+    starts_with('test'),
+    names_to = 'test',
+    values_to = 'score',
+    names_transform = list(test = parse_factor)
+  ) %>%
+  pivot_wider(
+    names_from = 'time', 
+    values_from = 'score',
+    names_glue = '{time}_score'
+  )
+
+scores_tidy
+```
+
+
+A good indication that we have made a tidy dataset is that it’s now easy
+to calculate the statistic of interest: the difference between pre- and postintervention scores:
+```{r}
+scores_tidy %>% mutate(diff = post_score - pre_score)
+```
+
+And it’s similarly easy to plot:
+
+```{r}
+scores_tidy %>% 
+  mutate(diff = post_score - pre_score) %>%
+  ggplot(aes(person, diff)) +
+  geom_path(aes(group = person), arrow = arrow(15, unit(.4, 'cm')), size = .5) +
+  geom_point(aes(color = test), size = 3) +
+  theme_light()
+```
+

@@ -1,0 +1,96 @@
+---
+title: "Visualization Distribution"
+author: "Pikachu"
+date: "10/28/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+### Visualizing a single distribution
+
+
+Age distribution using Histogram:
+
+```{r}
+titanic_train %>%
+  ggplot(aes(Age)) +
+  geom_histogram(binwidth = 3, fill = '#56B4E9', color ='white') +
+  theme_economist_white() +
+  scale_y_continuous(expand = expansion(mul = c(0, .1))) + 
+  theme(plot.background = element_blank(),
+        axis.line.x = element_blank(),
+        axis.ticks.x = element_blank())
+```
+
+When making a histogram, always explore multiple bin widths.
+In general, if the bin width is too small, then the histogram becomes overly peaky and visually busy and the main trends in the data may be obscured. On the other hand, if the bin width is too large, then smaller features in the distribution of the data, such as the dip around age 10, may disappear.
+
+```{r}
+make_plot <- function(binwidth) {
+  titanic_train %>%
+  ggplot(aes(Age)) +
+  geom_histogram(binwidth = binwidth, fill = '#56B4E9', color ='white') +
+  theme_economist_white() +
+  scale_y_continuous(expand = expansion(mul = c(0, .1))) + 
+  theme(plot.background = element_blank(),
+        axis.line.x = element_blank(),
+        axis.ticks.x = element_blank(),
+        axis.text.y = element_text(hjust = 1))
+}
+
+
+p1 <- make_plot(1)
+p2 <- make_plot(3)
+p3 <- make_plot(5)
+p4 <- make_plot(15)
+
+(p1 | p2) / (p3 | p4)
+```
+
+Kernel Density Estimation:
+Just as is the case with histograms, the exact visual appearance of a density plot depends on the kernel and bandwidth choices
+
+```{r}
+make_density <- function(bw) {
+  titanic_train %>%
+    ggplot(aes(Age)) +
+    geom_density(bw = bw, fill = 'tomato', color = 'red', size = 1) +
+    theme_minimal() +
+    theme(panel.grid.major.x = element_blank(),
+          panel.grid.minor.x = element_blank(),
+          panel.grid.minor.y = element_blank())
+}
+#Trying different bandwidth
+make_density(bw =.3)
+make_density(bw = 2)
+make_density(bw = 5)
+
+```
+
+### Multiple Distributions
+ like to see how the ages of Titanic passengers are distributed between men and women.
+ 
+```{r}
+
+
+ggplot(titanic_train) +
+  geom_density(aes(x = Age, y = ..count.., fill = Sex, color = Sex), bw = 3) +
+  facet_wrap(~ Sex) +
+  theme_minimal() +
+  theme(panel.grid.major.x = element_blank(),
+        panel.grid.minor.x = element_blank(),
+        panel.grid.minor.y = element_blank(),
+        legend.position = 'bottom', 
+        legend.justification = c(1, 0)) +
+  scale_y_continuous(n.breaks = 5) +
+  labs(x = 'Passenger age (year)',
+       y = ' scaled density')
+```
+
+Age Pyramid
+![](https://clauswilke.com/dataviz/visualizing_distributions_I_files/figure-html/titanic-age-pyramid-1.png)
+Multiple distributions:
+![](https://clauswilke.com/dataviz/visualizing_distributions_I_files/figure-html/butterfat-densitites-1.png)
+ 

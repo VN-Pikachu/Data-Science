@@ -1,0 +1,10 @@
+Link: http://r-statistics.co/Top50-Ggplot2-Visualizations-MasterList-R-Code.html
+
+An effective chart is one that:
+    1.Is simple but elegant. It should not force you to think much in order to get it.
+    2.Aesthetics supports information rather that overshadow it.
+    3.Is not overloaded with information.
+    4.Conveys the right information without distorting facts.
+    
+The list below sorts the visualizations based on its primary purpose. Primarily, there are 8 types of objectives you may construct plots. So, before you actually make the plot, try and figure what findings and relationships you would like to convey or examine through the visualization. Chances are it will fall under one (or sometimes more) of these 8 categories.
+

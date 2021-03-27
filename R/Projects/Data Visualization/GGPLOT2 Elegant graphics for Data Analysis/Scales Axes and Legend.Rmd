@@ -1,0 +1,468 @@
+---
+title: "Scales Axes Legend"
+author: "Pikachu"
+date: "11/2/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(tidyverse)
+library(patchwork)
+library(dslabs)
+```
+
+# 6.1 Introduction
+# 6.2 Scales
+## 6.2.1 Exercises
+1. What happens if you pair a discrete variable to a continuous scale? Raise an error
+
+What
+happens if you pair a continuous variable to a discrete scale?
+```{r}
+mpg %>%
+  ggplot(aes(class, displ)) + 
+  geom_jitter(width = .2) +
+  scale_x_continuous()
+
+mpg %>%
+  ggplot(aes(cty, hwy)) + 
+  geom_point() + 
+  scale_x_discrete()
+```
+
+2. Simplify the following plot specifications to make them easier to understand.
+```{r}
+mpg %>%
+  ggplot(aes(displ, hwy)) + 
+  geom_point() +
+  scale_y_continuous(name = 'Highway mpg')
+
+
+mpg %>%
+  ggplot(aes(class, displ, color = drv)) + 
+  geom_point() +
+  labs(x = 'Type of car', y = 'displayment', color = 'Drive train')
+
+```
+# 6.3 Guides: Axes and Legend
+
+## 6.3.1 Scale title
+
+`name`: Change the title of the scale. You can supply text or mathematical expression
+
+```{r}
+mpg %>%
+  ggplot(aes(displ, hwy)) + 
+  geom_point() +
+  scale_x_continuous(name = quote(a + b ^ c)) +
+  scale_y_continuous(name = 'Fuck\nyou')
+```
+
+Because tweaking these labels is such a common task, there are three
+helpers that save you some typing: 
+* `xlab()`
+* `ylab()` 
+* `labs()`
+
+```{r}
+mpg %>%
+  ggplot(aes(displ, hwy, color = class)) + 
+  geom_point() +
+  xlab('displacement') +           #set x-axis label
+  ylab('hightway mpg') +           #Set y-axis label
+  labs(color = 'class of the car') #Set legend's title
+```
+Remove axis-label: Set to NULL
+```{r}
+mpg %>%
+  ggplot(aes(displ, hwy, color = class)) + 
+  geom_point() + 
+  #Remove x-axis title, y-axis title and legend's title
+  labs(x = NULL, y = NULL, color = NULL)
+```
+## 6.3.2 Breaks and labels
+
+* breaks: set_xticks, set_yticks
+* labels: set_xticklabels, set_yticklabels
+
+```{r}
+df <- data.frame(x = c(1, 3, 5) * 1000, y = 1)
+axs <- ggplot(df, aes(x, y)) +
+geom_point() +
+labs(x = NULL, y = NULL)
+axs
+axs + scale_x_continuous(breaks = c(2000, 4000))
+axs + scale_x_continuous(breaks = c(2000, 4000), labels = c("2k", "4k"))
+```
+
+```{r}
+leg <- ggplot(df, aes(y, x, fill = x)) +
+geom_tile() +
+labs(x = NULL, y = NULL)
+leg
+leg + scale_fill_continuous(breaks = c(2000, 4000))
+leg + scale_fill_continuous(breaks = c(2000, 4000), labels = c("2k", "4k"))
+```
+
+If you want to relabel the breaks in a categorical scale, you can use a
+named labels vector:
+```{r}
+df2 <- data.frame(x = 1:3, y = c("a", "b", "c"))
+ggplot(df2, aes(x, y)) +
+geom_point()
+ggplot(df2, aes(x, y)) +
+geom_point() +
+scale_y_discrete(labels = c(a = "apple", b = "banana", c = "carrot"))
+```
+
+To suppress breaks (and for axes, grid lines) or labels, set them to NULL:
+```{r}
+axs + scale_x_continuous(breaks = NULL)
+
+axs + scale_x_continuous(labels = NULL)
+```
+
+Additionally, you can supply a function to breaks or labels. The breaks
+function should have one argument, the limits (a numeric vector of length
+
+two), and should return a numeric vector of breaks. The labels function
+should accept a numeric vector of breaks and return a character vector of
+labels (the same length as the input). The scales package provides a number
+of useful labelling functions:
+
+• scales::comma_format() adds commas to make it easier to read large numbers.
+• scales::unit_format(unit, scale) adds a unit suffix, optionally scaling.
+• scales::dollar_format(prefix, suffix) displays currency values, rounding
+to two decimal places and adding a prefix or suffix.
+• scales::wrap_format() wraps long labels into multiple lines.
+See the documentation of the scales package for more details.
+
+
+You can adjust the minor breaks (the faint grid lines that appear between the major grid lines) by supplying a numeric vector of positions to the
+`minor_breaks` argument. This is particularly useful for log scales
+
+
+## 6.3.3 Exercises
+1. Recreate the following graphic:
+```{r}
+mpg %>%
+  ggplot(aes(displ, hwy)) + 
+  geom_point() +
+  scale_x_continuous(labels = function(x) paste0(x, ' L')) +
+  labs(x = 'Displacement', y = 'Highway mile per gallon')
+```
+
+
+2. List the three different types of object you can supply to the `breaks` argument. How do` breaks` and `labels` differ?
+
+Supply to the  `breaks` argument:
+* a list of values: e.g: c(10, 20, 100)
+* a mapping: e.g: c('F' = 'Female', 'M' = 'Female')
+* a function
+
+3. Recreate the following plot:
+
+
+```{r}
+mpg %>%
+  ggplot(aes(displ, hwy, color = drv)) + 
+  geom_point() +
+  scale_color_discrete(labels = function(v) paste0(v, 'wd'))
+```
+4. What label function allows you to create mathematical expressions? What
+label function converts 1 to 1st, 2 to 2nd, and so on?
+
+5. What are the three most important arguments that apply to both axes
+and legends? What do they do? Compare and contrast their operation for
+axes vs. legends.
+
+* name
+  - Axes: set axes title (x-axis title, y-axis title, ..)
+  - Legend: set legend title
+```{r}
+#Axes title
+mpg %>%
+  ggplot(aes(displ, hwy)) + 
+  geom_point() + 
+  scale_x_continuous(name = 'displacement') + 
+  scale_y_continuous(name = 'highway mpg') |
+
+#Legend title
+mpg %>%
+  ggplot(aes(displ, hwy, color = class)) +
+  geom_point() + 
+  scale_color_discrete(name = 'class of car')
+```
+
+* breaks
+* labels
+
+```{r}
+#Axes
+mpg %>% ggplot(aes(displ, hwy)) + 
+  geom_point() |
+mpg %>% ggplot(aes(displ, hwy)) + 
+  geom_point() + 
+  scale_x_continuous(breaks = c(2, 5, 7), labels = c('Two', 'Five', 'Seven'))
+
+#Legend
+mpg %>%
+  ggplot(aes(displ, hwy, size = cyl)) + 
+  geom_point(alpha = .5) +
+  theme_bw() |
+mpg %>%
+  ggplot(aes(displ, hwy, size = cyl)) + 
+  geom_point(alpha = .5) +
+  theme_bw() +
+  scale_size_continuous(breaks = c(4, 7, 8), labels = c('Four', 'Seven', 'Eight'))
+```
+# 6.4 Legend
+## 6.4.1 Layers and Legends
+
+```{r}
+df <- data.frame(x = 0, y = 1:3, z = letters[1:3])
+```
+
+By default, a layer will only appear if the corresponding aesthetic is
+mapped to a variable with aes(). You can override whether or not a layer
+appears in the legend with show.legend: FALSE to prevent a layer from ever
+appearing in the legend; TRUE forces it to appear when it otherwise wouldn’t.
+Using TRUE can be useful in conjunction with the following trick to make
+points stand out:
+
+```{r}
+df %>%
+  ggplot(aes(y, y)) + 
+  geom_point(size = 4, color = 'grey20') + 
+  geom_point(aes(color = z), size = 2) |
+
+df %>%
+  ggplot(aes(y, y)) + 
+  geom_point(size = 4, color = 'grey20', show.legend = T) + 
+  geom_point(aes(color = z), size = 2)
+  
+```
+Sometimes you want the geoms in the legend to display differently to the
+geoms in the plot.
+
+```{r}
+iris %>%
+  ggplot(aes(Sepal.Length, Sepal.Width, color = Species)) +
+  geom_point(size = 3, alpha = .3) + 
+  scale_color_discrete(guide = guide_legend(override.aes = list(alpha = 1)))
+             
+```
+ggplot2 tries to use the fewest number of legends to accurately convey the
+aesthetics used in the plot. It does this by combining legends where the same
+variable is mapped to different aesthetics. The figure below shows how this
+works for points: if both colour and shape are mapped to the same variable,
+then only a single legend is necessary.
+
+```{r}
+ggplot(df, aes(x, y)) + geom_point(aes(colour = z)) |
+ggplot(df, aes(x, y)) + geom_point(aes(shape = z)) |
+ggplot(df, aes(x, y)) + geom_point(aes(shape = z, colour = z))
+```
+In order for legends to be merged, they must have the same `name`. So if you
+change the name of one of the scales, you’ll need to change it for all of them.
+
+## 6.4.2 Legend Layout
+
+Position
+
+```{r}
+p <- mpg %>%
+  ggplot(aes(displ, hwy, color = class)) + 
+  geom_point() 
+
+p
+
+p + theme(legend.position = 'top')
+
+p + theme(legend.position = 'none') #turn off legend
+```
+Position, horizontal alignment and vertical alignment
+
+```{r}
+p + 
+  theme(legend.position = c(0, 1), legend.justification = c(0, 1)) #place legend at the top left of the panel
+
+p + theme(legend.position = c(.5, .5), legend.justification = c(.5, .5))
+
+p + theme(legend.position = c(1, 1), legend.justification  = c(1, 1))
+```
+
+# 6.4.3 Guide Function
+
+# 6.4.4 Exercises
+1. How do you make legends appear to the left of the plot?
+
+Using  `theme(legend.position = 'left')`
+```{r}
+iris %>%
+  ggplot(aes(Sepal.Length, Sepal.Width, color = Species)) + 
+  geom_point() +
+  theme(legend.position = 'left')
+```
+
+2. What’s gone wrong with this plot? How could you fix it?
+multiple legends MUST have the same `name` to overlay each other
+```{r}
+#default
+ggplot(mpg, aes(displ, hwy)) +
+geom_point(aes(colour = drv, shape = drv)) +
+scale_colour_discrete("Drive train") |
+
+#Fixed
+mpg %>%
+  ggplot(aes(displ, hwy, color = drv, shape = drv)) + 
+  geom_point() +
+  scale_color_discrete('Same legend title') + 
+  scale_shape_discrete('Same legend title')
+```
+3. Can you recreate the code for this plot?
+```{r}
+mpg %>%
+  ggplot(aes(displ, hwy, color = class)) + 
+  geom_smooth(method = 'lm', se = F) + 
+  geom_point(show.legend = F) + 
+  theme(legend.position = 'bottom',
+        legend.title = element_blank()) +
+  guides(color = guide_legend(nrow = 1))
+```
+# 6.5 Limits
+
+The limits, or domain, of a scale are usually derived from the range of the
+data. There are two reasons you might want to specify limits rather than
+relying on the data:
+1. You want to make limits smaller than the range of the data to focus on
+an interesting area of the plot.
+2. You want to make the limits larger than the range of the data because you
+want multiple plots to match up.
+
+
+You can modify the limits using the limits parameter of the scale:
+• For continuous scales, this should be a numeric vector of length two. If
+you only want to set the upper or lower limit, you can set the other value
+to NA.
+• For discrete scales, this is a character vector which enumerates all possible
+values.
+
+```{r}
+#default
+p <- mpg %>% 
+  ggplot(aes(class, displ)) + 
+  geom_jitter(width = .2)
+
+p |
+  
+#Continuous, 2 values
+p + scale_y_continuous(limits = c(3, 5)) | #set y lim to range 3 -> 5
+
+#Continuous, 1 value, set ylim starting from 4
+p + scale_y_continuous(limits = c(4, NA)) | 
+  
+#Discete, only display  2seater and compact
+p + scale_x_discrete(limits = c('2seater', 'compact'))
+```
+
+You can also use `xlim`, `ylim`, `lims`
+
+```{r}
+p |
+p + ylim(3,5) |
+p + ylim(4, NA) |
+p + xlim(c('2seater', 'compact'))
+```
+
+If you have eagle eyes, you’ll have noticed that the range of the axes
+actually extends a little bit past the limits that you’ve specified. This ensures
+that the data does not overlap the axes. To eliminate this space, set `expand = c(0, 0)`. This is useful in conjunction with `geom_raster()`:
+
+```{r}
+f_plot <- faithfuld %>% 
+  ggplot(aes(eruptions, waiting, fill = density)) + 
+  geom_raster() + 
+  theme(legend.position = 'none')
+
+f_plot |
+  
+f_plot + 
+  scale_x_continuous(expand = c(0, 0)) + 
+  scale_y_continuous(expand = c(0,0))
+```
+## 6.5.1 Exercises
+
+1. The following code creates two plots of the mpg dataset. Modify the code
+so that the legend and axes match, without using facetting!
+```{r}
+#Default
+fwd <- subset(mpg, drv == "f")
+rwd <- subset(mpg, drv == "r")
+ggplot(fwd, aes(displ, hwy, colour = class)) + 
+  geom_point() |
+ggplot(rwd, aes(displ, hwy, colour = class)) + 
+  geom_point()
+
+#Solution
+fwd %>%
+  ggplot(aes(displ, hwy, color = class)) + 
+  geom_point() + 
+  scale_x_continuous(limits = c(1, 7)) + 
+  scale_y_continuous(limits = c(15, 45)) |
+
+rwd %>%
+  ggplot(aes(displ, hwy, color = class)) + 
+  geom_point() + 
+  xlim(c(1, 7)) + 
+  ylim(c(15, 45))
+```
+```{r}
+mpg %>%
+  ggplot(aes(displ, hwy, color = class)) + 
+  geom_point()
+```
+2. What does `expand_limits()` do and how does it work? Read the source
+code.
+
+3. What happens if you add two `xlim()` calls to the same plot? Why?
+The last one will be executed, all previous will be ignored
+```{r}
+mpg %>%
+  ggplot(aes(displ, hwy)) + 
+  geom_point() + 
+  xlim(3, 5) + 
+  xlim(2, 6)
+```
+4. What does scale x continuous(limits = c(NA, NA)) do? think of it as range (-Inf, Inf)
+
+```{r}
+mpg %>%
+  ggplot(aes(displ, hwy)) + 
+  geom_point() + 
+  scale_x_continuous(limits = c(NA, NA))
+```
+
+# 6.6 Scale tools
+
+## 6.6.1 Continuous Position Scales
+
+Every plot has two position scales, x and y. The most common continuous position scales are `scale x continuous()` and `scale y continuous()`, which
+linearly map data to the x and y axis. The most interesting variations are
+produced using transformations. Every continuous scale takes a `trans` argument, allowing the use of a variety of transformations:
+
+```{r}
+gapminder %>%
+  filter(continent == 'Asia' & year == 2010 & !is.na(gdp)) %>% 
+  mutate(country = reorder(country, gdp)) %>%
+  ggplot(aes(country, gdp)) +
+  geom_col() + 
+  coord_flip() + 
+  scale_y_continuous(trans = 'log10') +
+  theme_bw()
+```
+# 6.7 Colors

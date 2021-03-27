@@ -1,0 +1,4 @@
+https://docs.python.org/3/tutorial/
+https://diveintopython3.net/index.html
+https://scipy-lectures.org/
+https://www.python-course.eu/python3_course.php

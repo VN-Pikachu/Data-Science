@@ -1,0 +1,16 @@
+---
+title: "Grammar of Graphics"
+author: "Pikachu"
+date: "11/2/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+# Layer
+1. Data
+2. Aesthetic mappings.
+3. A statistical transformation (stat).
+4. A geometric object (geom).
+5. A position adjustment.

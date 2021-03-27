@@ -1,0 +1,7 @@
+DataFrame.info()
+Series.idxmin(), Series.idxmax()
+
+using pd.Series.str.split with argument `expand=True` to have `tidyr::separate`
+
+to check if a column is numeric: np.issubdtype(df.column.dtype, np.number)
+to select columns based on types, using pd.select_dtypes

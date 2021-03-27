@@ -1,0 +1,541 @@
+---
+title: "Model basics"
+author: "Pikachu"
+date: "12/2/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(tidyverse)
+library(modelr)
+library(patchwork)
+```
+# 23.1 Introduction
+# 23.2 A simple model
+## 23.2.1 Exercises
+
+>1. One downside of the linear model is that it is sensitive to unusual values because the distance incorporates a squared term. Fit a linear model to the simulated data below, and visualise the results. Rerun a few times to generate different simulated datasets. What do you notice about the model?
+
+```{r}
+sim1a <- tibble(
+  x = rep(1:10, each = 3),
+  y = x * 1.5 + 6 + rt(length(x), df = 2)
+)
+
+md <- lm(y ~ x, data = sim1a)
+
+params <- md %>% coef()
+
+sim1a %>% 
+  ggplot(aes(x, y)) + 
+  geom_point() +
+  geom_abline(slope = params[[2]], intercept = params[[1]])
+```
+>2. One way to make linear models more robust is to use a different distance measure. For example, instead of root-mean-squared distance, you could use mean-absolute distance. Use `optim()` to fit this model to the simulated data above and compare it to the linear model.
+
+```{r}
+loss <- function(params, data) {
+  y_pred <- params[[1]] * data$x + params[[2]]
+  abs(mean(data$y - y_pred))
+}
+
+res <- optim(c(0, 0), loss, data = sim1a)
+
+res
+
+sim1a %>% 
+  ggplot(aes(x, y)) + 
+  geom_point() +
+  geom_abline(slope = res$par[[1]], intercept = res$par[[2]])
+```
+
+>3. One challenge with performing numerical optimisation is that it’s only guaranteed to find one local optimum. What’s the problem with optimising a three parameter model like this?
+
+```r
+model1 <- function(a, data) {
+  a[1] + data$x * a[2] + a[3]
+}
+```
+
+The problem is that you for any values `a[1] = a1` and `a[3] = a3`, any other values of `a[1]` and `a[3]` where `a[1] + a[3] == (a1 + a3)` will have the same fit. Depending on our starting points, we can find different optimal values. In fact there are an infinite number of optimal values for this model.
+
+# 23.3 Visualizing models
+
+For simple models, like the one above, you can figure out what pattern the model captures by carefully studying the model family and the fitted coefficients. Here, however, we’re going to take a different tack. We’re going to focus on understanding a model by looking at its predictions. It’s also useful to see what the model doesn’t capture, the so-called residuals which are left after subtracting the predictions from the data. Residuals are powerful because they allow us to use models to remove striking patterns so we can study the subtler trends that remain.
+
+## 23.3.1 Predictions
+
+```{r}
+sim1_model <- lm(y ~ x, data = sim1)
+
+# generate values from original data, then calculate predictions using a given model
+y_pred <- sim1 %>% data_grid(x) %>% add_predictions(sim1_model)
+
+y_pred
+```
+
+```{r}
+sim1 %>% 
+  ggplot(aes(x, y)) + 
+  geom_point() + 
+  geom_line(data = y_pred, mapping = aes(x, pred), color = 'red')
+  # instead, we can plot the prediction line by using slope and intercept
+  # but this approach will work for any model
+```
+
+## 23.3.2 Residuals
+
+The flip-side of predictions are **residuals**. The predictions tells you the pattern that the model has captured, and the residuals tell you what the model has missed. The residuals are just the distances between the observed and predicted values that we computed above.
+
+```{r}
+# calculate residual from training data, given fitted model
+
+res <- sim1 %>% add_residuals(sim1_model)
+
+res
+```
+
+There are a few different ways to understand what the residuals tell us about the model. One way is to simply draw a frequency polygon to help us understand the spread of the residuals:
+
+```{r}
+res %>% 
+  ggplot(aes(resid)) +
+  geom_freqpoly(binwidth = .5)
+```
+
+This helps you calibrate the quality of the model: how far away are the predictions from the observed values? Note that the average of the residual will always be 0.
+
+You’ll often want to recreate plots using the residuals instead of the original predictor.
+
+```{r}
+res %>% 
+  ggplot(aes(x, resid)) +
+  geom_point() + 
+  geom_hline(yintercept = 0, color = 'red')
+```
+This looks like random noise, suggest that our model has done a good job on capturing the pattern of the data.
+
+## 23.3.3 Exercises
+
+>1. Instead of using `lm()` to fit a straight line, you can use `loess()` to fit a smooth curve. Repeat the process of model fitting, grid generation, predictions, and visualisation on sim1 using `loess()` instead of `lm()`. How does the result compare to `geom_smooth()`?
+
+- Model fitting
+```{r}
+sim1_model_smooth <- loess(y ~ x, data = sim1)
+
+sim1_model_smooth %>% summary()
+```
+- Grid generation
+
+```{r}
+sim1_grid <- sim1 %>% data_grid(x)
+
+sim1_grid
+```
+
+- Data prediction
+
+```{r}
+pred_smooth <- sim1_grid %>% add_predictions(sim1_model_smooth)
+pred_smooth
+```
+
+- Residuals
+```{r}
+res_smooth <- sim1 %>% add_residuals(sim1_model_smooth)
+res_smooth
+```
+```{r}
+# Visualizing result
+sim1 %>% 
+  ggplot(aes(x, y)) +
+  geom_point() + 
+  geom_line(data = pred_smooth, mapping = aes(x, pred), color = 'blue') +
+  theme_bw() |
+  
+# compare to geom_smoonth
+  sim1 %>% 
+  ggplot(aes(x, y)) + 
+  geom_point() + 
+  geom_smooth(se = F) + 
+  theme_bw()
+```
+ In general, the loess model has smaller residuals within the sample (out of sample is a different issue, and we haven’t considered the uncertainty of these estimates).
+
+```{r}
+res_smooth %>% 
+  ggplot(aes(resid)) +
+  geom_freqpoly(binwidth = .5) | 
+res_smooth %>% 
+  ggplot(aes(x, resid)) + 
+  geom_point() +
+  geom_hline(yintercept = 0, color = 'red') +
+  geom_point(data = res, color = 'red')
+```
+
+
+>2. `add_predictions()` is paired with `gather_predictions()` and `spread_predictions()`. How do these three functions differ?
+
+```{r}
+# add_predictions() return predictions from a fitted model
+args(add_predictions)
+
+sim1 %>% add_predictions(sim1_model)
+```
+```{r}
+# gather_predictions() and spread_predictions() return predictions from one (or multiple) seperated fitted model in long or wide format
+
+sim1 %>% gather_predictions(sim1_model, sim1_model_smooth)
+```
+```{r}
+sim1 %>% spread_predictions(sim1_model, sim1_model_smooth)
+```
+
+
+>3. What does `geom_ref_line()` do? What package does it come from? Why is displaying a reference line in plots showing residuals useful and important?
+
+It adds a reference line to the plot. It comes from `ggplot2` package. (equivalent to `geom_hline` and `geom_vline`).  
+Putting a reference line at zero for residuals is important because good models (generally) should have residuals centered at zero, with approximately the same variance (or distribution) over the support of x, and no correlation. A zero reference line makes it easier to judge these characteristics visually.
+
+>4. Why might you want to look at a frequency polygon of absolute residuals? What are the pros and cons compared to looking at the raw residuals?
+
+Showing the absolute values of the residuals makes it easier to view the spread of the residuals. The model assumes that the residuals have mean zero, and using the absolute values of the residuals effectively doubles the number of residuals. However, using the absolute values of residuals throws away information about the sign, meaning that the frequency polygon cannot show whether the model systematically over- or under-estimates the residuals.
+
+# 23.4 Formulas and model families
+
+The majority of modelling functions in R use a standard conversion from formulas to functions. You’ve seen one simple conversion already: `y ~ x` is translated to `y = a_1 + a_2 * x`. If you want to see what R actually does, you can use the `model_matrix()` function. It takes a data frame and a formula and returns a tibble that defines the model equation: each column in the output is associated with one coefficient in the model, the function is always `y = a_1 * out1 + a_2 * out_2`. For the simplest case of `y ~ x1` this shows us something interesting:
+
+```{r}
+df <- tribble(
+  ~y, ~x1, ~x2,
+  4, 2, 5,
+  5, 1, 6
+)
+
+model_matrix(df, y ~ x1)
+```
+The way that R adds the intercept to the model is just by having a column that is full of ones. By default, R will always add this column. If you don’t want, you need to explicitly drop it with -1:
+
+```{r}
+df %>% model_matrix(y ~ x1 - 1)
+```
+The model matrix grows in an unsurprising way when you add more variables to the the model:
+
+```{r}
+df %>% model_matrix(y ~ x1 + x2)
+```
+## 23.4.1 Categorical variables
+
+```{r}
+df <- tribble(
+  ~ sex, ~ response,
+  "male", 1,
+  "female", 2,
+  "male", 1
+)
+
+df %>% model_matrix(response ~ sex)
+```
+
+Fortunately, however, if you focus on visualising predictions you don’t need to worry about the exact parameterisation. Let’s look at some data and models to make that concrete. Here’s the sim2 dataset from `modelr`:
+
+```{r}
+sim2 %>% 
+  ggplot(aes(x, y)) + 
+  geom_point()
+```
+```{r}
+sim2_model <- lm(y ~ x, data = sim2)
+
+sim2_pred <- sim2 %>% data_grid(x) %>% add_predictions(sim2_model)
+
+sim2_pred
+```
+
+Effectively, a model with a categorical x will predict the mean value for each category. (Why? Because the mean minimises the root-mean-squared distance.) That’s easy to see if we overlay the predictions on top of the original data:
+
+```{r}
+sim2 %>% 
+  ggplot(aes(x, y)) +
+  geom_point() +
+  geom_point(data = sim2_pred, aes(x, pred), color = 'red', size = 4)
+```
+
+You can’t make predictions about levels that you didn’t observe. Sometimes you’ll do this by accident so it’s good to recognise this error message:
+
+```{r}
+try(tibble(x = 'e') %>% add_predictions(sim2_model)))
+```
+
+## 23.4.2 Interactions (continuous and categorical)
+
+What happens when you combine a continuous and a categorical variable? sim3 contains a categorical predictor and a continuous predictor. We can visualise it with a simple plot:
+
+```{r}
+sim3 %>% 
+  ggplot(aes(x1, y, color  = x2)) + 
+  geom_point()
+```
+There are two possible models you could fit to this data:
+
+```{r}
+mod1 <- lm(y ~ x1 + x2, data = sim3)
+mod2 <- lm(y ~ x1 * x2, data = sim3)
+```
+
+When you add variables with `+`, the model will estimate each effect independent of all the others. It’s possible to fit the so-called interaction by using `*`. For example, `y ~ x1 * x2` is translated to `y = a_0 + a_1 * x1 + a_2 * x2 + a_12 * x1 * x2`. Note that whenever you use `*`, both the interaction and the individual components are included in the model.
+
+To visualise these models we need two new tricks:
+
+1. We have two predictors, so we need to give `data_grid()` both variables. It finds all the unique values of `x1` and `x2` and then generates all combinations.
+
+2. To generate predictions from both models simultaneously, we can use `gather_predictions()` which adds each prediction as a row. The complement of `gather_predictions()` is `spread_predictions()` which adds each prediction to a new column.
+
+```{r}
+sim3_pred <- sim3 %>% data_grid(x1, x2) %>% gather_predictions(mod1, mod2)
+
+sim3_pred
+```
+
+We can visualise the results for both models on one plot using facetting:
+
+```{r}
+sim3 %>% 
+  ggplot(aes(x1, y, color = x2)) +
+  geom_point() +
+  geom_line(data = sim3_pred, aes(y = pred)) +
+  facet_wrap(~ model)
+```
+
+Note that the model that uses `+` has the same slope for each line, but different intercepts. The model that uses `*` has a different slope and intercept for each line.
+
+Which model is better for this data? We can take look at the residuals. Here I’ve facetted by both model and `x2` because it makes it easier to see the pattern within each group.
+
+```{r}
+sim3 %>% 
+  gather_residuals(mod1, mod2) %>% 
+  ggplot(aes(x1, resid, color = x2)) + 
+  geom_point() + 
+  geom_hline(yintercept = 0, color = 'red') +
+  facet_grid(model ~ x2)
+```
+There is little obvious pattern in the residuals for mod2. The residuals for mod1 show that the model has clearly missed some pattern in `b`, and less so, but still present is pattern in `c`, and `d`. You might wonder if there’s a precise way to tell which of `mod1` or `mod2` is better. There is, but it requires a lot of mathematical background, and we don’t really care. Here, we’re interested in a qualitative assessment of whether or not the model has captured the pattern that we’re interested in.
+
+## 23.4.3 Interactions(two continuous)
+
+```{r}
+# data that we will be working on
+sim4
+```
+```{r}
+
+mod1 <- lm(y ~ x1 + x2, data = sim4)
+mod2 <- lm(y ~ x1 * x2, data = sim4)
+
+sim4_pred <- sim4 %>% 
+  # see `?modelr::seq_range` for more detail
+  # basically, Generate a sequence over the range of a vector
+  data_grid(x1 = seq_range(x1, 5), 
+            x2 = seq_range(x2, 5)) %>% 
+  gather_predictions(mod1, mod2)
+
+sim4_pred
+```
+Visualize model:
+
+```{r}
+sim4_pred %>% 
+  ggplot(aes(x1, x2, fill = pred)) +
+  geom_tile() + 
+  facet_wrap(~ model)
+```
+
+That doesn’t suggest that the models are very different! But that’s partly an illusion: our eyes and brains are not very good at accurately comparing shades of colour. Instead of looking at the surface from the top, we could look at it from either side, showing multiple slices:
+
+```{r}
+sim4_pred %>% 
+  ggplot(aes(x1, pred, color = x2, group = x2)) + 
+  geom_line() + 
+  facet_wrap(~ model)
+
+sim4_pred %>% 
+  ggplot(aes(x2, pred, color = x1, group = x1)) + 
+  geom_line() + 
+  facet_wrap(~ model)
+```
+This shows you that interaction between two continuous variables works basically the same way as for a categorical and continuous variable. An interaction says that there’s not a fixed offset: you need to consider both values of x1 and x2 simultaneously in order to predict y.
+
+You can see that even with just two continuous variables, coming up with good visualisations are hard. But that’s reasonable: you shouldn’t expect it will be easy to understand how three or more variables simultaneously interact! But again, we’re saved a little because we’re using models for exploration, and you can gradually build up your model over time. The model doesn’t have to be perfect, it just has to help you reveal a little more about your data.
+
+## 23.4.4 Transformations
+
+You can also perform transformations inside the model formula. For example, `log(y) ~ sqrt(x1) + x2` is transformed to `log(y) = a_1 + a_2 * sqrt(x1) + a_3 * x2`. If your transformation involves `+`, `*`, `^`, or `-`, you’ll need to wrap it in `I()` so R doesn’t treat it like part of the model specification. For example, `y ~ x + I(x ^ 2)` is translated to `y = a_1 + a_2 * x + a_3 * x^2`. If you forget the `I()` and specify `y ~ x ^ 2 + x`, R will compute `y ~ x * x + x. x * x` means the interaction of x with itself, which is the same as x. R automatically drops redundant variables so `x + x` become x, meaning that `y ~ x ^ 2 + x` specifies the function `y = a_1 + a_2 * x`. That’s probably not what you intended!
+
+Again, if you get confused about what your model is doing, you can always use `model_matrix()` to see exactly what equation `lm()` is fitting:
+
+```{r}
+df <- tribble(
+  ~y, ~x,
+   1,  1,
+   2,  2, 
+   3,  3
+)
+
+df %>% model_matrix(y ~ x ^ 2 + x)
+
+df %>% model_matrix(y ~ I(x ^ 2) + x)
+```
+
+Transformations are useful because you can use them to approximate non-linear functions. If you’ve taken a calculus class, you may have heard of Taylor’s theorem which says you can approximate any smooth function with an infinite sum of polynomials. That means you can use a polynomial function to get arbitrarily close to a smooth function by fitting an equation like `y = a_1 + a_2 * x + a_3 * x^2 + a_4 * x ^ 3`. Typing that sequence by hand is tedious, so R provides a helper function: `poly()`:
+
+```{r}
+df %>% model_matrix(y ~ poly(x, 2))
+```
+
+However there’s one major problem with using `poly()`: outside the range of the data, polynomials rapidly shoot off to positive or negative infinity. One safer alternative is to use the natural spline, `splines::ns()`.
+
+```{r}
+df %>% model_matrix(y ~ splines::ns(x, 2))
+```
+
+Let’s see what that looks like when we try and approximate a non-linear function:
+
+```{r}
+sim5 <- tibble(
+  x = seq(0, 3.5 * pi, length = 50),
+  y = 4 * sin(x) + rnorm(length(x))
+)
+
+ggplot(sim5, aes(x, y)) +
+  geom_point()
+```
+```{r}
+# polynomial order 4
+sim5_mod1 <- lm(y ~ poly(x, 4), data = sim5)
+
+sim5_mod2 <- lm(y ~ splines::ns(x, 4), data = sim5)
+
+sim5_pred <- sim5 %>% 
+  data_grid(x) %>% 
+  gather_predictions(sim5_mod1, sim5_mod2) 
+
+sim5 %>% 
+  ggplot(aes(x, y)) + 
+  geom_point() +
+  geom_line(data = sim5_pred, aes(x, pred), color = 'red')  +
+  facet_wrap(~ model)
+  
+```
+Notice that the extrapolation outside the range of the data is clearly bad. This is the downside to approximating a function with a polynomial. But this is a very real problem with every model: the model can never tell you if the behaviour is true when you start extrapolating outside the range of the data that you have seen. You must rely on theory and science.
+
+## 23.4.5 Exercises
+
+>1. What happens if you repeat the analysis of `sim2` using a model without an intercept. What happens to the model equation? What happens to the predictions?
+
+```{r}
+# model fitting
+# add -1 to the right of the formula to run a model without fitting the intercept
+sim2_mod <- lm(y ~ x - 1, data = sim2)
+
+sim2 %>% model_matrix(y ~ x - 1)
+```
+```{r}
+# data generation, prediction
+
+sim2_pr <- sim2 %>% data_grid(x) %>% 
+  add_predictions(sim2_mod)
+
+sim2_pr
+
+```
+
+```{r}
+# the prediction is exactly the same as the model with the intercept
+sim2 %>% 
+  ggplot(aes(x, y)) + 
+  geom_point() + 
+  geom_point(data = sim2_pr, mapping = aes(y = pred), color = 'red', size = 4)
+```
+>2. Use `model_matrix()` to explore the equations generated for the models I fit to `sim3` and `sim4`. Why is `*` a good shorthand for interaction?
+
+```{r}
+sim3 %>% model_matrix(y ~ x1 * x2)
+```
+```{r}
+sim4 %>% model_matrix(y ~ x1 * x2)
+```
+>3. Using the basic principles, convert the formulas in the following two models into functions. (Hint: start by converting the categorical variable into 0-1 variables.)
+
+```r
+mod1 <- lm(y ~ x1 + x2, data = sim3)
+mod2 <- lm(y ~ x1 * x2, data = sim3)
+```
+
+>4. For sim4, which of `mod1` and `mod2` is better? I think `mod2` does a slightly better job at removing patterns, but it’s pretty subtle. Can you come up with a plot to support my claim?
+
+```{r}
+sim4_resid <- sim4 %>% gather_residuals(mod1, mod2)
+
+sim4_resid %>% 
+  ggplot(aes(resid, color = model)) + 
+  geom_freqpoly(binwidth = .5) +
+  geom_rug() +
+  theme_light()
+```
+
+```{r}
+# The absolute value of residual
+
+sim4_resid %>% 
+  ggplot(aes(abs(resid), color = model)) + 
+  geom_freqpoly(binwidth = .5) +
+  theme_light()
+```
+does not show much difference in the residuals between the models. However, mod2 appears to have fewer residuals in the tails of the distribution between 2.5 and 5 (although the most extreme residuals are from `mod2.`
+
+This is confirmed by checking the standard deviation of the residuals of these models,
+
+```{r message = F}
+sim4_resid %>% 
+  group_by(model) %>% 
+  summarize(sd = sd(resid))
+```
+The standard deviation of the residuals of `mod2` is smaller than that of `mod1`.
+
+# 23. 5 Missing values
+
+Missing values obviously can not convey any information about the relationship between the variables, so modelling functions will drop any rows that contain missing values. R’s default behaviour is to silently drop them, but `options(na.action = na.warn)` (run in the prerequisites), makes sure you get a warning.
+
+```{r}
+df <- tribble(
+  ~x, ~y,
+  1, 2.2,
+  2, NA,
+  3, 3.5,
+  4, 8.3,
+  NA, 10
+)
+
+mod <- lm(y ~ x, data = df)
+```
+
+To suppress the warning, set `na.action = na.exclude`:
+```{r}
+lm(y ~ x, data = df, na.action = na.exclude)
+```
+
+
+You can always see exactly how many observations were used with `nobs()`:
+
+```{r}
+nobs(mod)
+```
+
+# 23.6 Other model families
+
+<https://r4ds.had.co.nz/model-basics.html#other-model-families>
+

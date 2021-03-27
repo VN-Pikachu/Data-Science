@@ -1,0 +1,37 @@
+max element-wise: np.maximum
+get help: np.info
+np.square, np.power
+np.moveaxis, np.rollaxis
+np.atleast_1d, np.atleast_2d, np.atleast_3d
+np.count_nonzero
+np.put
+np.take
+np.clip, ndarray.clip
+np.pad
+np.unravel_index
+np.trim_zeros() function strips the leading and trailing zeroes from a one-dimensional array
+[1,2,3] --> [[1],[2],[3]] --> a[:, np.newaxis] (equivalent: np.expand_dims(a, axis = 1))
+
+stride_tricks.as_strided
+
+np.logical_and.reduce
+np.add.reduceat
+np.dot, np.inner
+
+negate a bool inplace: np.logical_not(Z, out=Z)
+    
+dump the array to a file, list, or string (tofile, tolist, tostring): eg. ndarray.tolist()
+
+update values in place: e.g: update values > 5 in array 5 to -1, inplace
+np.putmask(a, a > 5, -1)
+-------------
+NOTE: In python, slicing creates a copy, but in numpy, slicing creates a view of the array
+-------------
+NOTE: A.T return a view
+---------------------
+numpy.lookfor: looks for keywords inside the docstrings of specified modules.
+e.g: finding functions having docstring contain the word 'convolution' ---> numpy.lookfor('convolution')
+------------------------
+when comparing 2 float numbers: using np.isclose, np.allclose
+------------------------
+Use np.put, np.take for performance efficient (much faster)

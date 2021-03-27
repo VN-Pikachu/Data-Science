@@ -1,0 +1,1 @@
+The column specification describes how each column is parsed from a character vector in to a more specific data type. readr does make an educated guess about the type of each column, but you’ll need override those guesses when it gets them wrong.

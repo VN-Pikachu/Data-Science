@@ -1,0 +1,452 @@
+---
+title: "Relational Data"
+author: "Pikachu"
+date: "11/30/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(tidyverse)
+library(nycflights13)
+```
+
+# 13.1 Introduction
+To work with relational data you need verbs that work with pairs of tables. There are three families of verbs designed to work with relational data:
+
+- **Mutating joins**, which add new variables to one data frame from matching observations in another.
+
+- **Filtering joins**, which filter observations from one data frame based on whether or not they match an observation in the other table.
+
+- **Set operations**, which treat observations as if they were set elements.
+
+# 13.2 nycflights13
+
+![](https://d33wubrfki0l68.cloudfront.net/245292d1ea724f6c3fd8a92063dcd7bfb9758d02/5751b/diagrams/relational-nycflights.png)
+
+- `airlines` lets you look up the full carrier name from its abbreviated code
+- `airports` gives information about each airport, identified by the `faa` airport code
+- `planes` gives information about each plane, identified by its `tailnum`
+- `weather` gives the weather at each NYC airport for each hour
+
+## 13.2.1 Exercises
+
+>1. Imagine you wanted to draw (approximately) the route each plane flies from its origin to its destination. What variables would you need? What tables would you need to combine?
+
+Drawing the routes requires the longitude and latitude of the origin and the destination airports of each flight. This requires `flights` and  `airports` table.
+
+```{r}
+flights_latlon <- flights %>% 
+  inner_join(airports %>% select(origin = faa, origin_lat = lat, origin_lon = lon), by = 'origin') %>%
+  inner_join(airports %>% select(dest = faa, dest_lat = lat, dest_lon = lon), by = 'dest')
+```
+
+This plots the approximate flight paths of the first 100 flights in the flights dataset.
+
+```{r}
+flights_latlon %>% 
+  slice_head(n = 100) %>% 
+  ggplot(aes(x = origin_lon, y = origin_lat, xend = dest_lon, yend = dest_lat)) +
+  geom_segment(arrow = arrow(angle = 10, length = unit(.1, 'cm'))) + 
+  borders('state') +
+  coord_quickmap() +
+  labs(x = 'Longitude', y = 'Latitude') 
+```
+
+
+
+>2. I forgot to draw the relationship between weather and airports. What is the relationship and how should it appear in the diagram?
+
+![](https://jrnold.github.io/r4ds-exercise-solutions/diagrams/nycflights.png)
+>3. weather only contains information for the origin (NYC) airports. If it contained weather records for all airports in the USA, what additional relation would it define with flights?
+
+
+
+>4. We know that some days of the year are “special”, and fewer people than usual fly on them. How might you represent that data as a data frame? What would be the primary keys of that table? How would it connect to the existing tables?
+
+I would add a table of special dates, similar to the following table.
+
+```{r}
+special_day <- tribble(
+  ~ year, ~ month, ~ day, ~ name,
+  2013, 01, 01, "New Years Day",
+  2013, 07, 04, "Independence Day",
+  2013, 11, 29, "Thanksgiving Day",
+  2013, 12, 25, "Christmas Day"
+  
+)
+```
+
+The primary key of this table is (`year`, `month`, `day`). The (`year`, `month`, `day`) columns could be used to join `special_days` with other tables.
+
+
+# 13.2 Keys
+
+The variables used to connect each pair of tables are called keys. A key is a variable (or set of variables) that uniquely identifies an observation. In simple cases, a single variable is sufficient to identify an observation. For example, each plane is uniquely identified by its t`ailnum`. In other cases, multiple variables may be needed. For example, to identify an observation in weather you need five variables: `year`, `month`, `day`, `hour`, and `origin`.
+
+There are two types of keys:
+
+- A **primary** key uniquely identifies an observation in its own table. For example, `planes$tailnum` is a primary key because it uniquely identifies each plane in the planes table.
+
+- A **foreign key** uniquely identifies an observation in another table. For example, `flights$tailnum` is a foreign key because it appears in the flights table where it matches each flight to a unique plane.
+
+A variable can be both a primary key and a foreign key. For example, `origin` is part of the `weather` primary key, and is also a foreign key for the `airports` table.
+
+Once you’ve identified the primary keys in your tables, it’s good practice to verify that they do indeed uniquely identify each observation. One way to do that is to `count()` the primary keys and look for entries where n is greater than one:
+
+```{r}
+planes %>% count(tailnum) %>% filter(n > 1)
+```
+```{r}
+weather %>% 
+  count(year, month, day, hour, origin)  %>% filter(n > 1 )
+```
+Sometimes a table doesn’t have an explicit primary key: each row is an observation, but no combination of variables reliably identifies it. For example, what’s the primary key in the `flights` table? You might think it would be the date plus the flight or tail number, but neither of those are unique:
+
+```{r}
+flights %>% count(year, month, day, hour, flight) %>% filter(n > 1)
+```
+```{r}
+flights %>% count(year, month, day, hour, tailnum) %>% filter(n > 1)
+```
+
+ If a table lacks a primary key, it’s sometimes useful to add one with `mutate()` and `row_number()`. That makes it easier to match observations if you’ve done some filtering and want to check back in with the original data. This is called a **surrogate key**.
+ 
+ A primary key and the corresponding foreign key in another table form a **relation**. Relations are typically one-to-many. For example, each flight has one plane, but each plane has many flights. In other data, you’ll occasionally see a 1-to-1 relationship. You can think of this as a special case of 1-to-many. You can model many-to-many relations with a many-to-1 relation plus a 1-to-many relation. For example, in this data there’s a many-to-many relationship between airlines and airports: each airline flies to many airports; each airport hosts many airlines.
+ 
+ ## 13.3.1 Exercises
+ 
+ >1. Add a surrogate key to `flights`
+ 
+```{r}
+flights %>% mutate(id = row_number(), .before = 1)
+```
+ >2. Identify the keys in the following datasets
+
+- `Lahman::Batting`:  
+The primary key for `Lahman::Batting` is (`playerID`, `yearID`, `stint`). The columns (`playerID`, `yearID`) are not a primary key because players can play on different teams within the same year.
+
+```{r}
+Lahman::Batting
+```
+```{r}
+Batting %>%
+  count(playerID, yearID, stint) %>% filter(n > 1)
+```
+
+- `babynames::babynames`:  
+The primary key is (`year`, `sex`, `name`)
+```{r}
+babynames::babynames %>% count(year, sex, name) %>% filter(n > 1)
+```
+
+- `nasaweather::atmos`: (`lat`, `long`, `year`, `month`)
+
+```{r}
+nasaweather::atmos
+```
+
+
+```{r}
+nasaweather::atmos %>% count(lat, long, year, month) %>% filter(n > 1)
+```
+
+- `fueleconomy::vehicles`: `id`
+
+```{r}
+fueleconomy::vehicles
+```
+
+```{r}
+fueleconomy::vehicles %>% count(id) %>% filter(n > 1)
+```
+
+- `ggplot2::diamonds`: There is no primary key.  since there is no combination of variables that uniquely identifies each observation. This is implied by the fact that the number of distinct rows in the dataset is less than the total number of rows, meaning that there are some duplicate rows.
+
+>3. Draw a diagram illustrating the connections between the `Batting`, `People`, and `Salaries` tables in the `Lahman` package. Draw another diagram that shows the relationship between `People`, `Managers`, `AwardsManagers`.
+
+![](https://jrnold.github.io/r4ds-exercise-solutions/diagrams/Lahman1.png)
+ ![](https://jrnold.github.io/r4ds-exercise-solutions/diagrams/Lahman2.png)
+ 
+ 
+![](https://jrnold.github.io/r4ds-exercise-solutions/diagrams/Lahman3.png)
+
+# 13.4 Mutating Joins
+
+Read the book. The information is useful but i already know them. Read this chapter for refreshment.
+
+## 13.4.1 Understanding joins
+## 13.4.2 Inner join
+## 13.4.3 Outer joins
+## 13.4.4 Duplicate keys
+## 13.4.5 Defining the key columns
+
+## 13.4.6 Exercises
+
+>1. Compute the average delay by destination, then join on the `airports` data frame so you can show the spatial distribution of delays. Here’s an easy way to draw a map of the United States:
+
+```{r message = F}
+dest_delay <- flights %>% 
+  group_by(dest) %>% 
+  summarize(delay = mean(arr_delay, na.rm = T)) %>% 
+  inner_join(airports, by = c('dest' = 'faa'))
+
+dest_delay %>% 
+  ggplot(aes(lon, lat, color = delay)) +
+  geom_point() + 
+  borders('state') + 
+  coord_quickmap() + 
+  theme_void()
+```
+
+>2. Add the location of the origin and destination (i.e. the `lat` and `lon`) to `flights`.
+
+```{r}
+origin_dest <- flights %>%
+  inner_join(airports %>% select(origin = faa, origin_lon = lon, origin_lat = lat), by = 'origin') %>%
+  inner_join(airports %>% select(dest = faa, dest_lon = lon, dest_lat = lat), by = 'dest')
+
+origin_dest %>% select(starts_with('origin') | starts_with('dest'))
+```
+>3. Is there a relationship between the age of a plane and its delays?
+
+```{r}
+plane_age_delay <- flights %>% 
+  inner_join(planes %>% transmute(tailnum, plane_age = 2013 - year), by = 'tailnum') 
+
+plane_age_delay
+```
+
+```{r}
+plane_age_delay %>%
+  ggplot(aes(factor(plane_age), arr_delay)) +
+  geom_boxplot(varwidth = T)
+```
+
+```{r}
+plane_age_delay %>%
+  # Calculate the average arrival delay for each age
+  # Since there are few planes older than 25 years, so I truncate age at 25 years.
+  mutate(plane_age = pmin(plane_age, 25)) %>% 
+  group_by(plane_age) %>% 
+  summarize(delay = mean(arr_delay, na.rm = T)) %>% 
+  ggplot(aes(plane_age, delay)) + 
+  geom_point() 
+```
+ The average departure delay is increasing for planes with ages up until 10 years. After that the departure delay decreases or levels off. The decrease in departure delay could be because older planes with many mechanical issues are removed from service or because air lines schedule these planes with enough time so that mechanical issues do not delay them.
+ 
+>4. What weather conditions make it more likely to see a delay?
+
+```{r}
+flights_weather <- flights %>% 
+  inner_join(weather, by = c('origin', 'year', 'month', 'day', 'hour')) 
+```
+
+Almost any amount of precipitation is associated with a delay. However, there is not a strong a trend above 0.02 in. of precipitation.
+```{r}
+flights_weather %>%
+  group_by(precip) %>% 
+  summarize(delay= mean(dep_delay, na.rm = T)) %>% 
+  ggplot(aes(precip, delay)) + 
+  geom_point() +
+  geom_line(group = 1)
+```
+There seems to be a stronger relationship between visibility and delay. Delays are higher when visibility is less than 2 miles.
+
+```{r}
+flights_weather %>%
+  mutate(visib = visib %>% cut_interval(10)) %>% 
+  group_by(visib) %>% 
+  summarize(delay= mean(dep_delay, na.rm = T)) %>% 
+  ggplot(aes(visib, delay)) + 
+  geom_point() +
+  geom_line(group = 1)
+```
+
+>5. What happened on June 13, 2013? Display the spatial pattern of delays, and then use Google to cross-reference with the weather.
+
+There was a large series of storms (derechos) in the southeastern US (see June 12-13, 2013 derecho series). The following plot show that the largest delays were in Tennessee (Nashville), the Southeast, and the Midwest, which were the locations of the derechos.
+
+```{r}
+flights %>% 
+  filter(month == 6, day == 13) %>% 
+  inner_join(airports, by = c('dest' = 'faa')) %>% 
+  group_by(dest, lon, lat) %>% 
+  summarize(delay = mean(arr_delay, na.rm = T)) %>% 
+  ggplot(aes(lon, lat, color = delay, size = delay)) +
+  geom_point() + 
+  borders('state') +
+  coord_quickmap() +
+  scale_color_viridis_c() + 
+  theme_void()
+```
+
+# 13.5 Filtering Joins
+
+Filtering joins match observations in the same way as mutating joins, but affect the observations, not the variables. There are two types:
+
+- `semi_join(x, y)` keeps all observations in `x` that have a match in `y`.
+- `anti_join(x, y)` drops all observations in `x` that have a match in `y`.
+
+Semi-joins are useful for matching filtered summary tables back to the original rows. For example, imagine you’ve found the top ten most popular destinations:
+
+```{r}
+top_dest <- flights %>% count(dest, sort = T) %>% slice_head(n = 10)
+
+top_dest
+```
+
+Now you want to find each flight that went to one of those destinations:
+```{r}
+flights %>% semi_join(top_dest, by = 'dest')
+```
+Anti-joins are useful for diagnosing join mismatches. For example, when connecting `flights` and `planes`, you might be interested to know that there are many flights that don’t have a match in planes:
+
+```{r}
+flights %>% anti_join(planes, by = 'tailnum') %>% count(tailnum)
+```
+## 13.5.1 Exercises
+
+>1. What does it mean for a flight to have a missing `tailnum`? What do the tail numbers that don’t have a matching record in planes have in common? (Hint: one variable explains ~90% of the problems.)
+
+A flight have a missing `tailnum` means that flight is cancelled.
+
+```{r}
+flights %>% 
+  # select rows having NA tailnum
+  filter(is.na(tailnum)) %>% 
+  select(dep_time, dep_delay, arr_time, arr_delay, air_time) %>% 
+  # check if the value of selected columns are all NA, to prove that flights having NA tailnum are cancelled flights
+  summarize(across(everything(), ~ all(is.na(.))))
+```
+
+
+
+Many of the tail numbers that don’t have a matching value in `planes` are registered to American Airlines (AA) or Envoy Airlines (MQ). The documentation for planes states:  
+
+>"American Airways (AA) and Envoy Air (MQ) report fleet numbers rather than tail numbers so can't be matched"
+
+```{r}
+flights %>%
+  # filter observations do not having `tailnum` in `planes`
+  anti_join(planes, by = 'tailnum') %>%
+  count(carrier, sort = T) %>% 
+  # get the full name for each carrier code
+  left_join(airlines, by = 'carrier')
+```
+
+
+>2. Filter flights to only show flights with planes that have flown at least 100 flights
+
+```{r}
+top_planes <- flights %>% filter(!is.na(tailnum)) %>% count(tailnum, sort = T) %>% slice_head(n = 10)
+
+flights %>% semi_join(top_planes, by = 'tailnum')
+```
+
+
+```{r}
+# equivalent
+flights %>% 
+  filter(!is.na(tailnum)) %>% 
+  group_by(tailnum) %>% 
+  mutate(n_flights = n()) %>% 
+  ungroup() %>% 
+  filter(dense_rank(desc(n_flights)) <= 10) %>%
+  count(tailnum, sort = T)
+```
+
+>3. Combine `fueleconomy::vehicles` and `fueleconomy::common` to find only the records for the most common models.
+
+```{r}
+library(fueleconomy)
+vehicles
+```
+```{r}
+common
+```
+```{r}
+vehicles %>% semi_join(common, by = c('make', 'model'))
+```
+
+
+>4. Find the 48 hours (over the course of the whole year) that have the worst delays. Cross-reference it with the `weather` data. Can you see any patterns?
+
+
+>5. What does `anti_join(flights, airports, by = c("dest" = "faa"))` tell you? What does `anti_join(airports, flights, by = c("faa" = "dest"))` tell you?
+
+- `anti_join(flights, airports, by = c("dest" = "faa"))` tells us to select flights having destination that does not exist in `airports`(the flights that went to an airport that is not in the FAA list of destinations).  Since the FAA list only contains domestic airports, these are likely foreign flights. 
+
+```{r}
+flights %>% anti_join(airports, by = c(dest = 'faa')) %>% count(dest)
+```
+In this set of four airports three are in Puerto Rico (BQN, SJU, and PSE) and one is in the US Virgin Islands ( STT).
+
+The reason for this discrepancy is that the flights and airports tables are derived from different sources. The flights data comes from the US Department of Transportation Bureau of Transportation Statistics, while the airport metadata comes from <openflights.org>. The BTS includes Puerto Rico and U.S. Virgin Islands as “domestic” (part of the US), while the openflights.org give use different values of country for airports in the US states ("United States") Puerto Rico ("Puerto Rico") and US Virgin Islands ("Virgin Islands").
+
+-  `anti_join(airports, flights, by = c("faa" = "dest"))` select airports in the `airports` data frame that are not the destination of any flight from the `flight` data frame (returns the US airports that were not the destination of any flight in the data).
+
+```{r}
+airports %>% anti_join(flights, by = c('faa' = 'dest')) 
+```
+
+
+>6. You might expect that there’s an implicit relationship between plane and airline, because each plane is flown by a single airline. Confirm or reject this hypothesis using the tools you’ve learned above.
+
+At each point in time, each plane is flown by a single airline. However, a plane can be sold and fly for multiple airlines. Logically, it is possible that a plane can fly for multiple airlines over the course of its lifetime. But, it is not necessarily the case that a plane will fly for more than one airline in this data, especially since it comprises only a year of data. So let’s check to see if there are any planes in the data flew for multiple airlines.
+
+```{r}
+flights %>% filter(!is.na(tailnum)) %>%
+  distinct(tailnum, carrier) %>% 
+  group_by(tailnum) %>% 
+  # keep only planes which have flown for more than 1 airline
+  filter(n() > 1) %>% 
+  arrange(tailnum)
+```
+
+# 13.6 Join problems
+
+The data you’ve been working with in this chapter has been cleaned up so that you’ll have as few problems as possible. Your own data is unlikely to be so nice, so there are a few things that you should do with your own data to make your joins go smoothly.
+
+1. Start by identifying the variables that form the primary key in each table. You should usually do this based on your understanding of the data, not empirically by looking for a combination of variables that give a unique identifier. If you just look for variables without thinking about what they mean, you might get (un)lucky and find a combination that’s unique in your current data but the relationship might not be true in general.
+
+2.Check that none of the variables in the primary key are missing. If a value is missing then it can’t identify an observation!
+
+3.Check that your foreign keys match primary keys in another table. The best way to do this is with an `anti_join()`. It’s common for keys not to match because of data entry errors. Fixing these is often a lot of work.If you do have missing keys, you’ll need to be thoughtful about your use of inner vs. outer joins, carefully considering whether or not you want to drop rows that don’t have a match.
+
+Be aware that simply checking the number of rows before and after the join is not sufficient to ensure that your join has gone smoothly. If you have an inner join with duplicate keys in both tables, you might get unlucky as the number of dropped rows might exactly equal the number of duplicated rows!
+
+# 13.6 Set operations
+
+- `intersect(x, y)`
+- `union(x, y)`
+- `setdiff(x, y`
+
+```{r}
+df1 <- tribble(
+  ~x, ~y,
+   1,  1,
+   2,  1
+)
+df2 <- tribble(
+  ~x, ~y,
+   1,  1,
+   1,  2
+)
+```
+
+```{r}
+union(df1, df2)
+```
+
+```{r}
+intersect(df1, df2)
+```
+
+```{r}
+setdiff(df1, df2)
+```
+

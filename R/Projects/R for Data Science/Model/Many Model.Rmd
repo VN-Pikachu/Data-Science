@@ -1,0 +1,166 @@
+--- 
+title: "Many Models" 
+author: "Pikachu" 
+date: "12/4/2020" 
+output: html_document 
+---
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+``` 
+
+```{r}
+library(tidyverse) 
+library(modelr)
+library(broom) 
+library(gapminder)
+library(generics) 
+``` 
+# 25.1. Introduction 
+# 25.2. Gapminder 
+```{r} 
+gapminder
+``` 
+In this case study, we are going to focus on just 3 variables to answer the
+question: "How does life expectancy (`lifeExp`) change over time (`year`) for
+each country (`country`)"
+```{r} 
+gapminder %>% 
+  ggplot(aes(year, lifeExp, group = country)) +
+  geom_line(alpha = .6) 
+```
+
+Overall, life expectancy has been steadily improving. But if you look closely, some countries don't follow this pattern.
+How can we make those countries easier to see? One approach is to remove the strong signal (overall linear growth) that makes it hard to see the subtle trends. We do this by fitting a model with a linear trend. The model captures steadily overall growth overtime, the residuals will show what is left. For each country, we will fit a linear model, than calculate the residuals, for more detail, see:
+"C:/Users/dell/RStudio/Projects/Data Visualization/ggplot2 elegantgraphics for data analysis/modeling for data visualization.rmd" 
+```{r}
+gapminder_model <- gapminder %>%
+  # for each country, make a list-column data
+  group_nest(country, continent) %>%
+  # fitting a linear model for each country
+  mutate(model = data %>% map( ~ lm(lifeExp ~ year, data = .))) 
+
+gapminder_augment <- gapminder_model %>%
+  # see summary about model 
+  mutate(augment = model %>% map(generics::augment)) %>%
+  unnest(augment)
+
+gapminder_augment
+```
+
+
+```{r} 
+gapminder_augment %>%
+  ggplot(aes(year, .resid)) +
+  geom_line(aes(group = country), alpha = .4) +
+  geom_smooth(color = 'red', size = 2) +
+  geom_hline(
+    yintercept = 0,
+    color = 'white',
+    size = 1,
+    linetype = 'dashed'
+  ) + theme_minimal() 
+```
+
+Facetting by continent is particularly useful:
+```{r}
+gapminder_augment %>% ggplot(aes(year, .resid, group = country)) +
+  geom_line(alpha = .4) +
+  facet_wrap( ~ continent, nrow = 2) +
+  theme_bw()
+```
+
+
+
+It looks like we missed some mild patterns. If we look at Africa, we can notice some very large residuals which suggest that our model did
+not fit there well. We will expore it more by attacking from a slightly different angle. 
+
+## 25.2.4 Model quality
+
+Instead of looking at the residuals, we can look at the measurements of model quality:
+
+```{r}
+gapminder_glance <- gapminder_model %>% 
+  mutate(glance = model %>% map(generics::glance)) %>% 
+  unnest(glance)
+
+gapminder_glance
+```
+We can start looking for models that don't fit well:
+```{r}
+gapminder_glance %>% 
+  arrange(r.squared)
+```
+The worst models all appear to be Africa:
+
+```{r}
+gapminder_glance %>% 
+  ggplot(aes(continent, r.squared)) +
+  geom_jitter(width = .5)
+```
+
+We can pull out the countries with particularly bad $R^2$ and plot the data:
+
+```{r}
+bad_countries <- gapminder_glance %>% slice_min(r.squared, n = 6)
+
+gapminder %>% 
+  semi_join(bad_countries, by = 'country') %>% 
+  ggplot(aes(year, lifeExp, color = country)) + 
+  geom_line() + 
+  theme_light()
+```
+We see two main effects here: the tragedies of the HIV/AIDS epidemic and the Rwandan genocide.
+
+## 25.2.5 Exercise
+
+>1. A linear trend seems to be slightly too simple for the overall trend. Can you do better with a quadratic polynomial? How can you interpret the coefficients of the quadratic? (Hint you might want to transform `year` so that it has mean zero.)
+
+```{r}
+library(splines)
+```
+
+```{r}
+res <- gapminder %>% 
+  mutate(year = year - mean(year)) %>% 
+  group_nest(country, continent) %>% 
+  mutate(model = data %>% map(~ lm(lifeExp ~ ns(year, 2), data = .)))  %>% 
+  # for each pair of `data` and `model`, calculate the residual tibble
+  mutate(resid = data %>% map2(model, modelr::add_residuals)) %>% 
+  unnest(resid)
+
+res
+```
+
+```{r}
+res %>% 
+  ggplot(aes(year, resid)) + 
+  geom_line(aes(group = country), alpha = .4) +
+  geom_smooth()
+```
+>2. Explore other methods for visualising the distribution of $R^2$ per continent. You might want to try the ggbeeswarm package, which provides similar methods for avoiding overlaps as jitter, but uses deterministic methods.
+
+```{r}
+library(ggbeeswarm)
+gapminder_glance
+```
+
+
+```{r}
+gapminder_glance %>% 
+  ggplot(aes(continent, r.squared)) + 
+  geom_beeswarm()
+```
+# 25.3 List-columns
+Nothing useful. Read the book for a refresh
+# 25.4 Creating List-columns
+Nothing useful. Read the book for a refresh
+# 25.5 Simplifying list-columns
+Nothing useful. Read the book for a refresh
+# 25.6 Making tidy data with broom
+The broom package provides three general tools for turning models into tidy data frames:
+
+1. `broom::glance(model)` returns a row for each model. Each column gives a model summary: either a measure of model quality, or complexity, or a combination of the two.
+
+2.`broom::tidy(model)` returns a row for each coefficient in the model. Each column gives information about the estimate or its variability.
+
+3. `broom::augment(model, data)` returns a row for each row in data, adding extra values like residuals, and influence statistics.

@@ -1,0 +1,2 @@
+to specify the height of each facet, set keyword: height = value (e.g: height = 5)
+we can specify the width of each facet, set keyword : aspect = height / width (e.g, height = 6, we want width = 3, then set aspect = 2)

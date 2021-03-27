@@ -1,0 +1,65 @@
+---
+title: "Coordinate system and Axes"
+author: "Pikachu"
+date: "10/28/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(tidyverse)
+library(dslabs)
+```
+
+### Cartesian Coordinates
+
+```{r}
+points <- data.frame(x = c(-1, 2, 0), y = c(-1, 1, 0))
+
+points %>% 
+  ggplot(aes(x, y)) +
+  geom_vline(xintercept = 0) +
+  geom_hline(yintercept = 0) + 
+  coord_cartesian(xlim = c(-2, 3), ylim = c(-2, 2)) +
+  geom_segment(aes(x = x, xend = x, y = 0, yend = y), linetype = 'dashed') +
+  geom_segment(aes(x = 0, xend = x, y = y, yend = y), linetype = 'dashed') +
+  geom_point(color = 'tomato', size = 3) +
+  geom_text(aes(label = paste0('(', x, ',', y, ')')),
+            hjust = 0, vjust = 0, 
+            nudge_x = .1, nudge_y = .1) +
+  annotate(x = c(-1, 2), y = c(-0.5, .5), 
+           hjust = c(1.2, -0.2), vjust = .5,  
+           label = paste0('y=', c(-1, 1)),
+           geom = 'text') +
+  annotate(x = c(-.5, 1), y = c(-1, 1), 
+           hjust = .5, vjust = c(1.2, -0.2),  
+           label = paste0('x=', c(-1, 2)),
+           geom = 'text') +
+  # annonate(x = c(), y = c(), vjust = c(1, -1))
+  labs(x = 'x axis', y = 'y axis') + 
+  theme_minimal()
+```
+Whenever the two axes are measured in different units, we can stretch or compress one relative to the other and maintain a valid visualization of the data (Figure 3.2). Which version is preferable may depend on the story we want to convey. A tall and narrow figure emphasizes change along the y axis and a short and wide figure does the opposite. Ideally, we want to choose an aspect ratio that ensures that any important differences in position are noticeable.
+
+![](https://clauswilke.com/dataviz/coordinate_systems_axes_files/figure-html/temperature-normals-Houston-1.png)
+On the other hand, if the x and the y axes are measured in the same units, then the grid spacings for the two axes should be equal, such that the same distance along the x or y axis corresponds to the same number of data units.
+
+### Non-linear Scale
+![](https://clauswilke.com/dataviz/coordinate_systems_axes_files/figure-html/linear-log-scales-1.png)
+
+```{r}
+gapminder %>%
+  filter(continent == 'Asia' & year == 2010 & !is.na(population)) %>%
+  mutate(country = reorder(country, population)) %>%
+  ggplot(aes(country, population)) +
+  geom_col(fill = 'tomato') +
+  scale_y_log10(breaks = 10 ^ (1:9), labels = paste0('10^', 1:9)) +
+  coord_flip() +
+  ggtitle('Population of Asian countries 2010') +
+  theme_minimal() 
+```
+
+ In particular, ratios should generally be shown on a log scale.

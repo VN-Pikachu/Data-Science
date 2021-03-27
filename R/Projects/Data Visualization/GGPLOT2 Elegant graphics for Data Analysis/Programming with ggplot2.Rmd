@@ -1,0 +1,220 @@
+---
+title: "Programming with ggplot2"
+author: "Pikachu"
+date: "11/25/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(tidyverse)
+library(patchwork)
+```
+
+# 12.1 Introduction
+A major requirement of a good data analysis is flexibility. If your data
+changes, or you discover something that makes you rethink your basic assumptions, you need to be able to easily change many plots at once. The main inhibitor of flexibility is code duplication. If you have the same plotting statement repeated over and over again, you’ll have to make the same change in many different places. 
+
+To make your code more flexible, you need to reduce duplicated code bywriting functions. When you notice you’re doing the same thing over and overagain, think about how you might generalise it and turn it into a function.
+
+In this chapter I’ll show how to write functions that create:
+• A single ggplot2 component.
+• Multiple ggplot2 components.
+• A complete plot.
+
+# 12.2 Single Components
+Each component of a ggplot plot is an object. Most of the time you create the
+component and immediately add it to a plot, but you don’t have to. Instead,
+you can save any component to a variable (giving it a name), and then add
+it to multiple plots:
+```{r}
+point <- geom_point(size = 3, shape = 21)
+
+iris %>% ggplot(aes(Sepal.Length, Sepal.Width)) + point |
+  
+iris %>% ggplot(aes(Petal.Length, Petal.Width)) + point
+
+```
+That’s a great way to reduce simple types of duplication (it’s much better
+than copying-and-pasting!), but requires that the component be exactly the
+same each time. If you need more flexibility, you can wrap these reusable
+snippets in a function.
+
+```{r}
+my_point <- function(size = 3, shape = 21, ...) geom_point(size = size, shape = shape, ...)
+
+iris %>% ggplot(aes(Sepal.Length, Sepal.Width)) + my_point() |
+  
+iris %>% ggplot(aes(Petal.Length, Petal.Width)) + my_point(shape = 5, color = 'tomato')
+```
+
+
+Finally, note that you can only *add* components to a plot; you can’t modify
+or remove existing objects.
+
+## 12.2.1 Exercises
+1. Create an object that represents a pink histogram with 100 bins.
+
+```{r}
+pink_hist <- geom_histogram(bins = 100, fill = 'pink')
+
+diamonds %>% ggplot(aes(carat)) + pink_hist
+```
+
+2. Create an object that represents a fill scale with the Blues ColorBrewer
+palette.
+
+```{r}
+blues <- scale_fill_brewer(palette = 'Blues')
+```
+
+3. Read the source code for `theme_grey()`. What are its arguments? How does
+it work?
+
+4. Create `scale_colour_wesanderson()`. It should have a parameter to pick the
+palette from the `wesanderson` package, and create either a continuous or
+discrete scale
+
+```{r}
+scale_color_wesanderson <- function(..., type = 'discrete', palette = 'Royal1', aesthetics = 'colour') {
+  discrete_scale(aesthetics, 'wesanderson', function(n) wes_palette(type = type, name = palette), ...)
+}
+
+p <- iris %>% ggplot(aes(Sepal.Length, Sepal.Width, color = Species)) + geom_point(show.legend = F) 
+
+p + scale_color_wesanderson() + theme_dark() | 
+
+p + scale_color_wesanderson(palette = 'BottleRocket1') + theme_light()
+```
+
+# 12.3 Multiple Components
+
+```{r message = F}
+library(Hmisc)
+geom_mean <- function() {
+list(
+stat_summary(fun = "mean", geom = "bar", fill = "grey70"),
+stat_summary(fun.data = "mean_cl_normal", geom = "errorbar", width = 0.4)
+)
+}
+ggplot(mpg, aes(class, cty)) + geom_mean()
+ggplot(mpg, aes(drv, cty)) + geom_mean()
+```
+
+
+If the list contains any NULL elements, they’re ignored. This makes it easy
+to conditionally add components:
+
+```{r}
+geom_mean <- function(se = TRUE) {
+list(
+stat_summary(fun = "mean", geom = "bar", fill = "grey70"),
+if (se)
+stat_summary(fun.data = "mean_cl_normal", geom = "errorbar", width = 0.4)
+)
+}
+ggplot(mpg, aes(drv, cty)) + geom_mean()
+ggplot(mpg, aes(drv, cty)) + geom_mean(se = FALSE)
+```
+## 12.3.1 Plot Components
+
+You’re not just limited to adding layers in this way. You can also include any
+of the following object types in the list:
+
+• A data.frame, which will override the default dataset associated with the
+plot. (If you add a data frame by itself, you’ll need to use %+%, but this is
+not necessary if the data frame is in a list.)
+• An aes() object, which will be combined with the existing default aesthetic
+mapping.
+• Scales, which override existing scales, with a warning if they’ve already
+been set by the user.
+• Coordinate systems and facetting specification, which override the existing
+settings.
+• Theme components, which override the specified components.
+
+## 12.3.2 Annotations
+
+It’s often useful to add standard annotations to a plot. In this case, your
+function will also set the data in the layer function, rather than inheriting it
+from the plot. There are two other options that you should set when you do
+this. These ensure that the layer is self-contained:
+• `inherit.aes = FALSE` prevents the layer from inheriting aesthetics from the
+parent plot. This ensures your annotation works regardless of what else is
+on the plot.
+• `show.legend = FALSE` ensures that your annotation won’t appear in the
+legend.
+
+## 12.3.3 Additional Arguments
+
+Read this section in the book
+
+## 12.3.4 Exercises
+
+# 12.4 Plot Functions
+
+Instead of creating components, you might want to write a
+function that takes data and parameters and returns a complete plot.
+For example, you could wrap up the complete code needed to make a
+piechart:
+
+
+```{r}
+piechart <- function(data, mapping) {
+ggplot(data, mapping) +
+geom_bar(width = 1) +
+coord_polar(theta = "y") +
+xlab(NULL) +
+ylab(NULL)
+}
+piechart(mpg, aes(factor(1), fill = class))
+```
+
+## 12.4.1 Indirectly Referring to Variables
+
+Read the book
+
+```{r}
+# Take the name of variable and show its distribution
+show_dist <- function(data, var) data %>% ggplot(aes_(as.name(var))) + geom_histogram()
+
+iris %>% show_dist('Sepal.Length')
+```
+
+## 12.4.2 The Plot Environment
+
+Read the book
+
+## 12.5 Functional Programming
+Since ggplot2 objects are just regular R objects, you can put them in a list.
+This means you can apply all of R’s great functional programming tools. For
+example, if you wanted to add different geoms to the same base plot, you
+could put them in a list and use `lapply()`.
+
+```{r}
+geoms <- list(
+geom_point(),
+geom_boxplot(aes(group = cut_width(displ, 1))),
+list(geom_point(), geom_smooth())
+)
+p <- ggplot(mpg, aes(displ, hwy))
+lapply(geoms, function(g) p + g)
+```
+## 12.5.1 Exercises
+1. How could you add a `geom_point()` layer to each element of the following list?
+
+```{r}
+plots <- list(
+ggplot(mpg, aes(displ, hwy)),
+ggplot(diamonds, aes(carat, price)),
+ggplot(faithfuld, aes(waiting, eruptions, size = density))
+)
+```
+
+Solution
+```{r}
+plots %>% lapply(as_mapper(~ . + geom_point()))
+```
+

@@ -1,0 +1,497 @@
+---
+title: "Data transformation"
+author: "Pikachu"
+date: "11/23/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(tidyverse)
+library(patchwork)
+```
+
+# 10.1 Introduction
+# 10.2 Filter
+
+It’s common to only want to explore one part of a dataset. A great data
+analysis strategy is to start with just one observation unit (one person, one
+city, etc), and understand how it works before attempting to generalise the
+conclusion to others. This is a great technique if you ever feel overwhelmed
+by an analysis: zoom down to a small subset, master it, and then zoom back
+out, to apply your conclusions to the full dataset.
+
+Filtering is also useful for extracting outliers. Generally, you don’t want
+to just throw outliers away, as they’re often highly revealing, but it’s useful
+to think about partitioning the data into the common and the unusual. You
+summarise the common to look at the broad trends; you examine the outliers
+individually to see if you can figure out what’s going on.
+
+For example, look at this plot that shows how the x and y dimensions of
+the diamonds are related:
+
+```{r}
+diamonds %>% 
+  ggplot(aes(x, y)) +
+  geom_bin2d() +
+  theme_bw()
+```
+There are around 50,000 points in this dataset: most of them lie along the
+diagonal, but there are a handful of outliers. One clear set of incorrect values
+are those diamonds with zero dimensions. We can use `filter()` to pull them
+out
+
+In a real analysis, you’d look at the outliers in more detail to see if you
+can find the root cause of the data quality problem. In this case, we’re just
+going to throw them out and focus on what remains.
+
+```{r}
+# Remove diamonds with x = 0 or y = 0 or y > 20
+diamonds %>% 
+  filter(x > 0, y > 0, y < 20) %>%
+  ggplot(aes(x, y)) +
+  geom_bin2d() + 
+  # add regression line
+  geom_smooth(method = 'lm', se = F, color = 'red', size = 2, alpha = .5) + 
+  theme_bw()
+```
+This plot is informative. We can see a strong relationship between `x` and `y`. The regression line tells us that for most diamonds, `x` and `y` are very similar. However, this plot sitll has problems:
+- The plot is mostly empty, because most of the data lies along the diagonal
+- There are some clear bivariate outliers, but it’s hard to select them with a simple filter.
+
+## 10.2.1 Useful tools
+See `?filter` 
+## 10.2.2 Missing values
+`filter()` only includes observations where all arguments are ``TRUE`, so `NA`
+values are automatically dropped (because almost any operations with `NA` will return `NA`. If you want to include missing values, be explicit: `x > 10 | is.na(x)`.
+
+## 10.2.3 Exercises
+1. Practice your filtering skills by:
+• Finding all the diamonds with equal x and y dimensions.
+```{r}
+diamonds %>% filter(x == y)
+```
+
+• A depth between 55 and 70.
+```{r}
+diamonds %>% filter(depth %>% between(55, 70))
+# equivalent
+#dimands %>% filter(55 <= depth, depth <= 70)
+```
+
+• A carat smaller than the median carat.
+```{r}
+diamonds %>% filter(carat < mean(carat))
+```
+
+• Cost more than $10,000 per carat
+```{r}
+diamonds %>% filter(price > 10000)
+```
+
+• Are of good or better quality
+```{r}
+diamonds %>% filter(cut %in% c('Good', 'Very Good'))
+```
+
+3. Repeat the analysis of outlying values with `z`. Compared to `x` and `y`, how would you characterise the relationship of `x` and `z`, or `y` and `z`?
+
+- `x` and `z`
+```{r}
+diamonds %>% 
+  ggplot(aes(x, z)) +
+  geom_bin2d() +
+  theme_bw()
+```
+```{r}
+# Remove outliers: x = 0 or y = 0 or z > 10
+diamonds %>% 
+  filter(x > 0, y > 0, z < 10) %>%
+  ggplot(aes(x, z)) +
+  geom_bin2d() + 
+  geom_smooth(method = 'lm', size = 2, color = 'red') + 
+  theme_bw()
+```
+**Comment**: There is a strong positive relationship between `x` and `z`. But the relationship is weaker than between `x` and `y`, and the variance is larger
+
+- `y` and `z`
+
+```{r}
+diamonds %>% 
+  ggplot(aes(y, z)) + 
+  geom_bin2d() + 
+  theme_bw()
+```
+```{r}
+# Remove outliers: y > 20 or z > 10 or y = 0 or z = 0
+diamonds %>% 
+  filter(y < 20, z < 10, 0 < z, 0 < y) %>%
+  ggplot(aes(y, z)) +
+  geom_bin2d() +
+  geom_smooth(method = 'lm', color = 'red', size = 2) + 
+  theme_bw()
+```
+**Comment**: There is a strong positive relationship between `y` and `z`
+
+4. Install the **ggplot2movies** package and look at the movies that have a
+missing budget. How are they different from the movies with a budget?
+```{r}
+library(ggplot2movies)
+data(movies)
+```
+First, let's get a look at the data and its structure
+```{r}
+movies
+```
+
+
+```{r}
+movies %>% glimpse()
+```
+```{r}
+# Create a new column `budget_type` (factor):
+#   - 'missing' if `budget` is NA
+#   - 'avaible' otherwise
+mv <- movies %>% 
+  mutate(budget_type = ifelse(is.na(budget), 'missing', 'avaible') %>% as_factor)
+
+mv
+```
+```{r}
+mv %>% 
+  ggplot(aes(budget_type)) +
+  geom_bar(fill = 'grey50') + 
+  labs(x = 'budget type') + 
+  theme_minimal() 
+
+```
+From the above plot, we can clearly see that the information about budget of most movies is missing
+
+```{r}
+# compare the distribution of 'missing budget' and 'available budget'
+show_dist <- function(data, variable) 
+  data %>% ggplot(aes({{variable}}, color = budget_type)) + geom_freqpoly() + theme_bw()
+
+mv %>% show_dist(length)
+
+mv %>% show_dist(rating)
+
+```
+5. What is `NA & FALSE` and `NA | TRUE`? Why? Why doesn’t `NA * 0` equal zero?
+What number times zero does not equal 0? What do you expect `NA ˆ 0` to
+equal? Why?
+
+- `NA & FALSE` is `FALSE`. `NA` in this context is a missing boolean value. Any boolean **and** `FALSE` will return `FALSE`.
+
+- `NA | TRUE` is `TRUE` (For the same reason as above)
+
+- `NA * 0` is not zero because if `NA` is Infinity, then **Infinity multiply  0** does not make sense
+
+- `NA ^ 0` is 1. In R, any number raise to power of 0 will always return 1
+
+#  10.3 Create new vairables
+See `?mutate`
+
+To better explore the relationship between `x` and `y`, it’s useful to “rotate” the
+plot so that the data is flat, not diagonal. We can do that by creating two new
+variables: 
+- one that represents the difference between x and y (which in this context represents the symmetry of the diamond) 
+- one that represents its size (the length of the diagonal)
+
+```{r}
+# Remove outliers
+diamonds_ok <- diamonds %>% filter(x > 0, y > 0, y < 20)
+
+d <- diamonds_ok %>% 
+  mutate(
+    sym = x - y,
+    size = sqrt(x * x + y * y)
+  ) 
+
+d %>%
+  ggplot(aes(size, sym)) + 
+  geom_bin2d() +
+  theme_light()
+```
+This plot has two advantages: we can more easily see the pattern followed
+by most diamonds, and we can easily select outliers. Here, it doesn’t seem
+important whether the outliers are positive (i.e. x is bigger than y) or negative
+(i.e. y is bigger x). So we can use the absolute value of the symmetry variable
+to pull out the outliers. Based on the plot, and a little experimentation, I came
+up with a threshold of 0.20
+
+```{r}
+d %>% ggplot(aes(abs(sym))) + geom_histogram(binwidth = .1) |
+d %>% filter(abs(sym) < .2) %>% ggplot(aes(abs(sym))) + geom_histogram(binwidth = .01) 
+```
+**Comments**: While most diamonds are closed to be symmetric, there are very few that are perfectly symmetric (i.e: x == y)
+
+## 10.3.1 Useful tools
+
+Typically, transformations will be suggested by your domain knowledge. However, there are a few transformations that are useful in a surprisingly wide range of circumstances.
+
+• Log-transformations are often useful. They turn multiplicative relationships into additive relationships; they compress data that varies over orders of magnitude; they convert power relationships to linear relationship.
+
+• Relative difference: If you’re interested in the relative difference between two variables, use log(x / y). It’s better than x/y because it’s symmetric: if x < y, x/y takes values [0, 1), but if x > y, x/y takes values (1, Inf).
+
+• Sometimes integrating or differentiating might make the data more interpretable: if you have distance and time, would speed or acceleration
+be more useful? (or vice versa). (Note that integration makes data more
+smooth; differentiation makes it less smooth.)
+
+• Partition a number into magnitude and direction with `abs(x)` and `sign(x)`.
+There are also a few useful ways to transform pairs of variables:
+• Partitioning into overall size and difference is often useful, as seen above.
+
+• If you see a strong trend, use a model to partition it into pattern and
+residuals is often useful. You’ll learn more about that in the next chapter.
+
+• Sometimes it’s useful to change positions to polar coordinates (or vice
+versa): distance `(sqrt(xˆ2 + yˆ2))` and angle `(atan2(y, x))`.
+
+## 10.3.2 Exercises
+1. Practice your variable creation skills by creating the following new variables:
+• The approximate volume of the diamond (using x, y, and z).
+• The approximate density of the diamond.
+• The price per carat.
+• Log transformation of carat and price
+
+```{r}
+diamonds %>% 
+  transmute(
+    volume = 1 / 3 * x * y * depth,                   
+    density = carat / volume, 
+    ppc = price / carat ,         # price per carat
+    log_price = log(price),
+    log_carat = log(carat)
+  )
+```
+
+2. How can you improve the data density of `ggplot(diamonds, aes(x, z)) + stat_bin2d()`.  
+What transformation makes it easier to extract outliers?
+
+```{r}
+diamonds %>% 
+  filter(x > 0, z > 0, z < 10) %>%                     # Remove obvious outliers
+  mutate(sym = x - z, size = sqrt(x * x + z * z)) %>%  # Create new variables (symmetric and the the size)
+  ggplot(aes(size, sym)) + 
+  geom_bin2d() +
+  theme_bw()
+```
+3. The depth variable is just the width of the diamond (average of x and y)
+divided by its height (z) multiplied by 100 and round to the nearest integer.
+Compute the depth yourself and compare it to the existing depth variable.
+Summarise your findings with a plot.
+
+4. Compare the distribution of symmetry for diamonds with `x > y` and `x < y`
+
+```{r}
+d %>% 
+  filter(abs(sym) < .2) %>% 
+  ggplot(aes(abs(sym), color = x > y)) + 
+  geom_freqpoly(binwidth = .01) + 
+  labs(x = 'symmetric', color = NULL) +
+  scale_color_discrete(breaks = c(F, T), labels = c('x < y', 'x > y')) + 
+  theme_light()
+```
+#  10.4 Group-wise summaries
+
+1. Define the grouping variables with `group_by()`.
+2. Describe how to summarise each group with a single row with `summarise()`
+
+For example, to look at the average price per clarity, we first group by clarity
+```{r message = F} 
+price_clarity <- diamonds %>% group_by(clarity) %>% summarize(avg_price = mean(price, na.rm = T)) 
+
+price_clarity
+```
+```{r}
+price_clarity %>% 
+  ggplot(aes(clarity, avg_price)) +
+  geom_point(size = 4, color = 'tomato') + 
+  geom_line(group = 1, color = 'grey80') +
+  theme_dark()
+```
+You might be surprised by this pattern: WHy do diamonds with better clarity have lower prices?
+We will be answering this question later
+
+---
+The next example shows how cut and depth interact
+```{r}
+diamonds %>% 
+  ggplot(aes(depth, ..density.., color = cut)) +
+  geom_freqpoly(binwidth = .1) + 
+  scale_x_continuous(limits = c(55, 70)) +
+  scale_color_brewer(palette = 'Dark2') + 
+  theme_bw()
+```
+We can recreate the above plot by using `dplyr`:
+```{r}
+diamonds %>% 
+  filter(depth %>% between(55, 70)) %>% 
+  count(cut, depth) %>%                            # The frequency of each (cut, depth)
+  group_by(cut) %>%mutate(prop = n / sum(n)) %>%   # Normalize the distribution of `depth` for each `cut`
+  ggplot(aes(depth, prop, color = cut)) +
+  geom_line() +
+  theme_light() + 
+  scale_color_brewer(palette = 'Dark2')
+```
+
+## 10.4.1 Useful tools
+
+`summarise()` needs to be used with functions that take a vector of n values
+and always return a single value. Those functions include:
+• Counts: `n()`, `n_distinct(x)`.
+• Middle: `mean(x)`, `median(x)`.
+• Spread: `sd(x`), `mad(x)`, `IQR(x)`.
+• Extremes: `quartile(x)`, `min(x)`, `max(x)`.
+• Positions: `first(x)`, `last(x)`, `nth(x, 2)`
+
+Most summary functions have a `na.rm` argument: `na.rm = TRUE` tells the
+summary function to remove any missing values prior to summarisation. This
+is a convenient shortcut: rather than removing the missing values then summarising, you can do it in one step.
+
+## 10.4.2 Statistical Considerations
+When summarising with the mean or median, it’s always a good idea to
+include a count and a measure of spread. This helps you calibrate your
+assessments—if you don’t include them you’re likely to think that the data is
+less variable than it really is, and potentially draw unwarranted conclusions.
+
+
+The following example summarizes of the average price
+by clarity to also include the number of observations in each group, and the
+upper and lower quartiles. It suggests the mean might be a bad summary for
+this data - the distributions of price are so highly skewed that the mean is
+higher than the upper quartile for some of the groups
+
+
+```{r message = F}
+diamonds %>% 
+  group_by(clarity) %>% 
+  summarize(avg_price= mean(price), 
+            n = n(), 
+            lq = quantile(price, .25),
+            uq = quantile(price, .75))
+```
+
+```{r}
+diamonds %>% 
+  ggplot(aes(clarity, price)) +
+  geom_boxplot(varwidth = T) +
+  theme_minimal()
+```
+Another example of this comes from baseball. Let’s take the MLB batting
+data from the Lahman package and calculate the batting average: the number
+of hits divided by the number of at bats. Who’s the best batter according to
+this metric?
+
+```{r}
+data(Batting, package = 'Lahman')
+batters <- Batting %>% filter(AB > 0, !is.na(H), !is.na(AB))
+
+batters
+```
+
+```{r message = F}
+per_player <- batters %>% group_by(playerID) %>% summarize(success_rate = sum(H) / sum(AB))
+
+per_player %>% ggplot(aes(success_rate)) + 
+  geom_histogram(binwidth = .01) + 
+  xlab('success rate') + 
+  theme_minimal()
+```
+Wow, there are a lot of players who can hit the ball every single time (i.e: success_rate = 1). Why? Are they superman?
+Let's double check
+
+```{r message = F}
+ba <- batters %>% group_by(playerID) %>% summarize(success_rate = sum(H) / sum(AB), total_at_bats = sum(AB))
+
+ba %>% ggplot(aes(total_at_bats, success_rate)) +
+  geom_bin2d(bins = 100) +
+  geom_smooth() + 
+  labs(x = 'Total number of at bats (AB)', y = 'Success Rate') +
+  theme_minimal()
+```
+The highest batting averages occur for the players with the smallest number of at bats - it’s not hard to hit the ball every time if you’ve only had two pitches. We can make the pattern a little more clear by getting rid of the
+players with less than 10 at bats.
+
+```{r}
+
+ba %>% filter(total_at_bats > 10) %>%  
+  ggplot(aes(total_at_bats, success_rate)) +
+  geom_bin2d(bins = 100) +
+  geom_smooth() +
+  theme_minimal()
+
+```
+
+## 10.4.3 Exercises
+
+1. For each year in the `ggplot2movies::movies` data determine the percent of movies with missing budgets. Visualise the result.
+
+
+```{r}
+movies
+```
+
+```{r}
+movies %>% 
+  group_by(year) %>% 
+  summarize(missing_rate = sum(is.na(budget)) / n()) %>%
+  ggplot(aes(year, missing_rate)) +
+  geom_line(color = 'tomato') +
+  labs(x ='Year', y = 'Missing rate') + 
+  theme_bw()
+```
+2. How does the average length of a movie change over time? Display your
+answer with a plot, including some display of uncertainty
+
+The average length of a movie tends to increase overtime. 
+
+```{r message = F}
+# Calculate Confidence Interval using Rmisc
+library(Rmisc)
+
+movies %>% 
+  filter(!is.na(length)) %>%
+  group_by(year) %>%
+  # 95% Confidence Interval, NOTE: have to use `list` function, each cell is a named list: $lower, $mean, $upper
+  transmute(ci = list(CI(length, .95))) %>% 
+  # Unnest named list from each cell to wider format
+  unnest_wider(ci) %>%
+  ggplot(aes(year, mean, ymin = lower, ymax = upper)) + 
+  geom_ribbon(alpha = .4) + 
+  geom_line(color = 'tomato', size = 1) +
+  ylab('Averge length time') + 
+  theme_bw()
+```
+4. Compute a histogram of carat by “hand” using a binwidth of 0.1. Display
+the results with geom bar(stat = "identity"). (Hint: you might need to
+create a new variable first.)
+
+```{r}
+carat_hist <- diamonds %>% 
+  pull(carat) %>%
+  cut_width(width = .1) %>% 
+  fct_count()
+
+carat_hist
+```
+
+```{r}
+carat_hist %>% 
+  ggplot(aes(f, n)) +
+  geom_col()
+```
+```{r}
+diamonds %>% ggplot(aes(carat)) + geom_histogram(binwidth = .1)
+```
+5. In the baseball example, the batting average seems to increase as the
+number of at bats increases. Why?
+
+# 10.5 Transformation Pipelines
+Using `%>%`
+
+##  10.5.1 Exercises

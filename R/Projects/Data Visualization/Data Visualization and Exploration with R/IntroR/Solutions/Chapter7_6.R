@@ -1,0 +1,1 @@
+ggplot(data=sm, mapping = aes(x=YEAR_, y=log(totalacres))) + geom_point()+  facet_wrap(~STATE) + geom_smooth(method=loess, se=TRUE)

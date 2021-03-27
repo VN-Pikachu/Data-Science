@@ -1,0 +1,4 @@
+Keep the values of the levels the same, but change their order. These are particularly useful for models, tables, and visualisations.
+
+Every functions in this family can be done using only 1 function:
+* fct_relevel()

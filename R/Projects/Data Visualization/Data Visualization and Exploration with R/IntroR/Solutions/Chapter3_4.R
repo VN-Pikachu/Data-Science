@@ -1,0 +1,5 @@
+#make sure the tidyverse package has been installed first - install.packages("tidyverse")
+library(readr)
+dfReadr <- read_csv("StudyArea.csv", col_types = cols(.default = "c"), col_names = TRUE)
+dfReadr <- read_csv("StudyArea.csv", col_names = TRUE)
+problems(dfReadr)

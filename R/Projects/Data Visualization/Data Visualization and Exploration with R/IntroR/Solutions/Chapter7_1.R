@@ -1,0 +1,6 @@
+dfWildfires <- read_csv("StudyArea.csv", col_types = list( UNIT = col_character()), col_names = TRUE)
+df <- select(dfWildfires, ORGANIZATI, STATE, YEAR_, TOTALACRES, CAUSE)
+grp <- group_by(df, YEAR_)
+sm <- summarize(grp, totalacres = sum(TOTALACRES))
+ggplot(data=sm) + geom_point(mapping = aes(x=YEAR_, y=totalacres))
+ggplot(data=sm) + geom_point(mapping = aes(x=YEAR_, y=log(totalacres)))

@@ -1,0 +1,1 @@
+Optimization: https://scipy-lectures.org/advanced/mathematical_optimization/index.html

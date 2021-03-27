@@ -1,0 +1,1 @@
+df2 <- read.table("all_genes_pombase.txt", header=TRUE, sep="\t", quote="")

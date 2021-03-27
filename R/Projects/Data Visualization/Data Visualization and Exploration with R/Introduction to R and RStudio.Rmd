@@ -1,0 +1,19 @@
+---
+title: "Introduction to R and RStudio"
+author: "Pikachu"
+date: "11/25/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Exercise 1: Creating variables and assigning data
+# Exercise 2: Using vectors and factors
+# Exercise 3: Using Lists
+# Exercise 4: Using data classes (matrix and data.frame)
+# Exercise 5: Looping statements
+# Exercise 6: Decision support statements – if | else
+# Exercise 7: Using functions
+# Exercise 8: Introduction to tidyverse

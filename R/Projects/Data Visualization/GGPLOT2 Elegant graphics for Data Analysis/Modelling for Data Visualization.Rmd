@@ -1,0 +1,946 @@
+---
+title: "Modellin for Data Visualization"
+author: "Pikachu"
+date: "11/23/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(tidyverse)
+library(patchwork)
+library(ggthemes)
+```
+
+# 11.1  Introduction
+# 11.2 Removing trends
+
+To get started, we’ll focus on diamonds of size two carats or less (96 %
+of the dataset). This avoids some incidental problems that you can explore
+in the exercises if you’re interested. We’ll also create two new variables: log
+price and log carat. These variables are useful because they produce a plot
+with a strong linear trend.
+
+```{r}
+diamonds2 <- diamonds %>% 
+  filter(carat <= 2) %>% 
+  mutate(log_carat = log2(carat), log_price = log2(price))
+
+diamonds2
+```
+```{r}
+diamonds2 %>% 
+  ggplot(aes(log_carat, log_price)) +
+  geom_bin2d() + 
+  geom_smooth(method = 'lm', size = 2, color = 'red') + 
+  theme_light()
+```
+In the graphic we used `geom_smooth()` to overlay the line of best fit to the
+data. We can replicate this outside of ggplot2 by fitting a linear model with
+`lm()`. This allows us to find out the slope and intercept of the line:
+
+```{r}
+model <- lm(log_price ~ log_carat, data = diamonds2)
+
+model %>% summary() %>% coef()
+```
+We can use it to subtract the trend away by looking at the residuals: the price of each diamond
+minus its predicted price, based on weight alone. Geometrically, the residuals
+are the vertical distance between each point and the line of best fit. They tell
+us the price relative to the “average” diamond of that size.
+
+```{r}
+diamonds2 <- diamonds2 %>% 
+  mutate(rel_log_price = model %>% residuals())
+
+diamonds2 %>%
+  ggplot(aes(carat, rel_log_price)) +
+  geom_bin2d() + 
+  theme_bw()
+```
+A relative price of 0 means that the price of the dimond is at the average price.
+A postive relative price means that the price of the diamond is more expensive then expected price based on its size (carat).
+A negative relative price means that the price of the diamonds are lower than expected price
+
+__Interpretation__: 
+A relative log price $(log_2(actual) - log_2(expected))$ of $x$ means that the actual price is $2^x$ times the expected price  
+A relative log price of 1 means that the actual price is twice as much as the expected price.  
+A relative log price of -1 meanss that the actual price is half as much as the expect price.
+
+Let’s use both price and relative price to see how colour and cut affect
+the value of a diamond. We’ll compute the average price and average relative
+price for each combination of colour and cut:
+
+```{r message = F}
+color_cut <- diamonds2 %>% 
+  group_by(color, cut) %>% 
+  summarize(avg_price = mean(price), avg_rel_log_price = mean(rel_log_price)) %>% arrange(desc(avg_price))
+
+color_cut
+```
+
+```{r}
+color_cut %>%
+  ggplot(aes(color, avg_price, color = cut, group = cut)) +
+  geom_point(size = 2) + 
+  geom_line() +
+  scale_color_brewer(palette = 'Set1') + 
+  labs(title = 'The correlation between diamond\'s quality and its average price',
+       y = 'Average price ($)') + 
+  theme_light()
+```
+If we look at price, it’s hard to see how the quality of the diamond affects the price.
+It seems like as the quality of the diamonds decreases (from D(best) to J(worst)), the average price increases.
+This does not make sense. But why this is the case?
+This is because dimonds with low quality tend to be larger (quality and size are cofounded)
+This is **correlation**, not **causality**
+There is a positive correlation between the quality of the diamond with its average price. Price tends to increase when when the quality decrease. But it does not means that low quality diamonds causes its price to be high (ridiculous). There is a hidden variable **size**, that is cofounded with **quality**. Larger size diamonds causes the price to be more expensive (**causality**). And large diamonds size often have low quality.  
+```{r}
+diamonds %>% 
+  filter(x > 0, y > 0, y < 20) %>%  # remove outliers
+  ggplot(aes(x, y, z = price)) + stat_summary_2d(fun = mean) +
+  labs(title = 'Large size causes higher price',
+       x = 'x (mm)', y = 'y (mm)', 
+       fill = 'Average price ($)') + 
+  theme_minimal() 
+
+diamonds %>% ggplot(aes(carat, price)) + geom_point(alpha = .1) + theme_bw()
+```
+
+```{r}
+color_cut %>%
+  ggplot(aes(color, avg_rel_log_price, color = cut, group = cut)) +
+  geom_point(size = 2) + 
+  geom_line() +
+  scale_color_brewer(palette = 'Set1') +
+  ylab('average relative log price') + 
+  theme_light()
+```
+We can clearly see a pattern here. As the quality of the diamond decreases (color from D(best) to J(worst)), the average relative log price decreases. Which means that on average, as the quality of the diamond decreases, the actual price of the diamond will be much lower than its expected price (in log2 scale). . The
+worst quality diamond is $0.61\mathrm{x} (2^{−0.7})$ the price of an “average” diamond.
+
+This technique can be employed in a wide range of situations. Wherever
+you can explicitly model a strong pattern that you see in a plot, it’s worthwhile to use a model to remove that strong pattern so that you can see what interesting trends remain.
+
+## 11.2.1 Exercises
+1. What happens if you repeat the above analysis with all diamonds? (Not
+just all diamonds with two or fewer carats). What does the strange geometry of log(carat) vs relative price represent? What does the diagonal line without any points represent?
+
+Answer:
+- The strange geometry of log(carat) vs relative price represents the correlation.
+- The diagonal line without any points represent the expected log price
+
+```{r}
+# Transform carat and price using log2 function
+diamonds_all <- diamonds %>% mutate(log_carat = log2(carat), log_price = log2(price))
+
+diamonds_all %>% 
+  ggplot(aes(log_carat, log_price)) + 
+  geom_bin2d() + 
+  geom_smooth(method = 'lm', se = F, color = 'red', size = 2) + 
+  theme_light()
+```
+```{r}
+my_model <- lm(log_price ~ log_carat, data = diamonds_all)
+
+# Calculate the relative log price
+diamonds_all <- diamonds_all %>% mutate(rel_log_price = my_model %>% resid())
+
+diamonds_all %>% 
+  ggplot(aes(log_carat, rel_log_price)) + 
+  geom_bin2d() + 
+  geom_vline(xintercept = 2, color = 'red') + 
+  theme_bw()
+```
+
+
+
+2. I made an unsupported assertion that lower-quality diamonds tend to be
+larger. Support my claim with a plot.
+
+```{r message = F}
+diamonds %>% 
+  ggplot(aes(color, carat)) +
+  geom_boxplot() + 
+  theme_bw() |
+diamonds %>% 
+  group_by(color) %>% 
+  summarize(carat = mean(carat, na.rm = T)) %>%
+  ggplot(aes(color, carat, group = 1)) +
+  geom_line() +
+  geom_point(size = 2, color = 'tomato') + 
+  ylab('Average carat') +
+  theme_bw()
+```
+Low quality diamonds tend to have higher median carat, average carat
+```{r}
+diamonds2 %>%
+  ggplot(aes(carat, fill = color)) +
+  geom_histogram(binwidth = .01, position = 'fill') +
+  scale_x_continuous(expand = c(0,0)) +
+  scale_y_continuous(expand = c(0, 0)) +
+  geom_hline(yintercept = 0.5, color = 'red') + 
+  theme(axis.ticks = element_blank())
+```
+
+
+From the above plot, we can clearly see that as carat increases, the proportion of low quality diamonds (G, H, I, J) increases,
+
+
+3. Can you create a plot that simultaneously shows the effect of color, cut,
+and clarity on relative price? If there’s too much information to show on
+one plot, think about how you might create a sequence of plots to convey
+the same message.
+
+```{r message = F}
+diamonds2 %>% 
+  group_by(clarity, color, cut) %>% 
+  summarize(rel = mean(rel_log_price)) %>% 
+  ggplot(aes(color, rel, color = cut, group = cut)) + 
+  geom_point() +
+  geom_line() + 
+  facet_wrap(~ clarity, nrow = 2, labeller = 'label_both') + 
+  scale_color_brewer(palette = 'Dark2') +
+  theme_light() 
+```
+
+
+4. How do depth and table relate to the relative price?
+
+- How do depth relate to the relative price?
+
+```{r}
+diamonds2 %>% 
+  ggplot(aes(depth, rel_log_price)) +
+  geom_bin2d() + 
+  geom_hline(yintercept = 0, color = 'red') + 
+  labs(y = 'Relative log prce', x = 'Depth') + 
+  theme_light()
+```
+1. For diamonds with low value of depth, the actual price is lower than expect (relative log price < 0)
+2. For diamonds with depth > 65, the majority of them having the actual price lower than its expected price 
+(This is because high depth diamonds tends to have lower quality and lower clarity we will prove it below)
+3. for diamonds with depth betwteen 50 and 65,  the proportion of diamonds with positive and negative relative log price is large (Negative or positive will be decide by the diamond's quality, clarity)
+
+Let's investigate how different diamond's qualities affect the relation between depth and relative price
+
+```{r}
+diamonds2 %>% 
+  ggplot(aes(depth, rel_log_price)) + 
+  geom_bin2d() + 
+  geom_hline(yintercept = 0, color = 'red') + 
+  ylab('Relative log price') + 
+  facet_wrap(~ color, nrow = 2, labeller = 'label_both') +
+  theme_bw() 
+```
+We can clearly see a pattern here. As the quality of the diamond decreases, the relative price tend to decrease. We can also see that low quality dimonds tend to have higher value of depth.
+
+```{r}
+# Create an animation to see the change as quality decreases
+diamonds2 %>% 
+    ggplot(aes(depth, rel_log_price)) + 
+    geom_bin2d() + 
+    theme_bw() + 
+    transition_states(color) + enter_fade() + exit_fade() + 
+    ggtitle('Color: {closest_state}') + 
+    ylab('Relative log price') 
+```
+How aobut clarity?
+
+```{r}
+diamonds2 %>%
+  ggplot(aes(depth, rel_log_price)) +
+  geom_bin2d() +
+  geom_hline(yintercept = 0, color = 'red') + 
+  facet_wrap(~ clarity, nrow = 2, labeller = 'label_both') +
+  ylab('relative log price') + 
+  theme_bw()
+```
+We can clearly that as the clarity increases, the relative log price also increases(shift up).
+The depth variance of highest clarity diamonds is small (from 55 to 65). Also notice that low clarity dimonds tend to have larger depth, while high clarity dimonds have lower depth
+
+
+
+- How do table relate to the relative price? 
+
+
+```{r}
+diamonds2 %>% 
+  ggplot(aes(table, rel_log_price)) +
+  geom_bin2d() +
+  geom_hline(yintercept = 0, color = 'red') + 
+  ylab('relative log price') +
+  theme_light()
+```
+1. Diamonds with low table (< 52) in general have actual price lower than its expect price (negative relative log price)
+2. Diamonds with medium table(52 to 65) have approximately the same number of negative and positive log price (Although if you pay attention, you can see that the number of negative relative log price is still larger). It seems like there is a hidden variable that decides whether the relative log price is positive or negative (I suspect they are clarity and color quality).
+3. Diamonds with large table (above 65) have a large amount of negative relative log price. This does not sound right. As human intuition, the the larger table, the better. But why we a pattern that for large table, the actual price is lower than its expected price (relative log price is negative)? One possible answer is that diamonds with large table tend to have low quality and clarity. Let's investigate.   
+
+
+- How does quality affect the relation between table and relative price?
+
+```{r}
+diamonds2 %>%
+  ggplot(aes(table, rel_log_price)) +
+  geom_bin2d() +
+  geom_hline(yintercept = 0, color = 'red') + 
+  facet_wrap(~ color, nrow = 2, labeller = 'label_both') +
+  ylab('relative log price') + 
+  theme_light()
+```
+```{r}
+diamonds2 %>%
+  ggplot(aes(table, rel_log_price)) +
+  geom_bin2d() +
+  geom_hline(yintercept = 0, color = 'red') + 
+  facet_wrap(~ clarity, nrow = 2, labeller = 'label_both') +
+  ylab('relative log price') + 
+  theme_light()
+```
+We can see that high clarity diamonds in general have smaller table and high relative log price.  
+As the clarity increases, the relative log price will also increases.   
+Highest clarity diamonds have a large number of positive relative log price, which means their actual price is higher than their expect price.  
+Lowest clarity diamonds mostly have negative log price. Their actual price is lower than their expected price.
+
+# 11.3 Texas Housing data
+
+```{r}
+txhousing
+```
+
+We’re going to explore how sales have varied over time for each city as it shows some interesting trends and poses some interesting challenges.
+Let's start with an overview. A time series of sales for each city:
+
+```{r}
+txhousing %>% ggplot(aes(date, sales, color = city)) + geom_line(show.legend = F) + theme_classic() 
+```
+
+Two factors make it hard to see the long-term trend in this plot:
+  1. The range of sales varies over multiple orders of magnitude. The biggest city, Houston, averages over ~4000 sales per month; the smallest city, San Marcos, only averages ~20 sales per month.
+  2. There is a strong seasonal trend: sales are much higher in the summer than in the winter.
+
+* We can fix the first problem by plotting log scales:
+```{r}
+txhousing %>% 
+  ggplot(aes(date, log2(sales), color = city)) + 
+  geom_line(show.legend = F) +
+  theme_classic()
+```
+* We can fix the second problem by fitting a model and look at the residual
+This time we will use a categorical predictor to remove the month effect.  
+First we check the technique works by applying it to a single city.  
+It's always a good idea to start with something simple so that if something goes wrong, you can easily pinpoint the problem
+
+```{r fig.width = 10, fig.height = 3}
+# Select observations of city Abilene
+Abilene <- txhousing %>% filter(city == 'Abilene')
+
+# fitting a model, NOTE: convert month to categorical
+Abilene_model <- lm(log2(sales) ~ factor(month), data = Abilene)
+
+p1 <- Abilene %>%
+  ggplot(aes(date, log2(sales))) + 
+  geom_line() + 
+  labs(subtitle = 'Real estate sales of Abilene city over time') + 
+  theme_economist_white() 
+  
+p2 <- Abilene %>% 
+  mutate(rel_sales = Abilene_model %>% resid()) %>%
+  ggplot(aes(date, rel_sales)) + 
+  geom_line() + 
+  geom_hline(yintercept = 0, color = 'red') + 
+  labs(y = 'Relative sales (log2 scale)', subtitle = 'Relative sales of Abilene city over time') + 
+  theme_economist_white()
+
+p1 + p2 
+```
+Let's apply this transformation to every city
+
+```{r}
+txhousing_rel <- txhousing %>% 
+  # transform sales to log2 scale
+  mutate(log_sales = log2(sales)) %>%
+  group_by(city) %>% 
+  # Calculate the relative log sales for each city
+  # NOTE: na.action = na.exclude argument
+  # y this ensures that missing values in the input are matched with
+  # missing values in the output predictions and residuals
+  # Without this argument, missing values are just dropped
+  # the residuals don’t line up with the inputs.
+  mutate(rel = lm(log_sales ~ factor(month), na.action = na.exclude) %>% resid()) 
+txhousing_rel
+```
+
+```{r}
+txhousing_trend <- txhousing_rel %>% 
+  ggplot(aes(date, rel)) + 
+  geom_line(aes(group = city), alpha = 1 / 5) +
+  geom_line(stat = 'summary', fun = mean, color = 'red', size = 1) + 
+  labs(y = 'relative log sales') + 
+  theme_economist_white()
+
+txhousing_trend
+```
+
+Now we have log-transformed the data and removed the strong seasonal effects.  
+We can see there is a strong common pattern: 
+A consistent increase from 2000 to 2007 and a drop until 2010 (with quite some noise), and then a gradual rebound
+
+## 11.3.1 Exercises
+1. The final plot shows a lot of short-term noise in the overall trend. How
+could you smooth this further to focus on long-term changes?
+
+Using `geom_smooth` to smooth out the overall trend
+```{r}
+txhousing_rel %>%
+  ggplot(aes(date, rel)) + 
+  geom_line(aes(group = city), alpha = .2) +
+  geom_smooth(color = 'red') + 
+  labs(y = 'Relative log sales') + 
+  theme_economist_white() 
+```
+```{r}
+txhousing_rel %>% 
+  ggplot(aes(factor(year), rel)) + 
+  geom_boxplot() +
+  labs(x = 'Year', y = 'Relative log sales') + 
+  theme_economist_white()
+```
+
+2. If you look closely (e.g. + xlim(2008, 2012)) at the long-term trend you’ll
+notice a weird pattern in 2009–2011. It looks like there was a big dip in
+2010. Is this dip “real”? (i.e. can you spot it in the original data)
+
+```{r}
+# look closely from year 2008 to 2012
+txhousing_trend + 
+  # highlight from year 2009 to 2001
+  annotate(xmin = 2009, xmax = 2011, ymin = -Inf, ymax = Inf, 
+           geom = 'rect',
+           alpha = .5, fill = 'grey50') + 
+  # zoom at part of years from 2008 to 2012
+  coord_cartesian(xlim = c(2008, 2012),
+                  ylim = c(-0.5, .3))
+```
+
+```{r message = F}
+# select data from year 2009 to 2011
+txhousing_rel_2009_2011 <- txhousing_rel %>% filter(year %>% between(2009, 2011))
+
+# the average relative log sales for each date
+overall_trend_2009_2011 <- txhousing_rel_2009_2011 %>% 
+  group_by(year, month, date) %>%
+  summarize(avg_rel = mean(rel, na.rm = T))
+
+overall_trend_2009_2011
+```
+```{r}
+# Date with lowest average relative log sales
+overall_trend_2009_2011 %>% 
+  ungroup() %>% 
+  slice_min(avg_rel, n = 1)
+```
+
+
+3. What other variables in the TX housing data show strong seasonal effects?
+Does this technique help to remove them?
+
+
+
+* volume
+```{r}
+txhousing %>% ggplot(aes(date, volume, color = city)) + geom_line(show.legend = F) + theme_economist_white()
+```
+```{r}
+txhousing %>%
+  mutate(log_volume = log2(volume)) %>% 
+  group_by(city) %>% 
+  mutate(rel_log_volume = lm(log_volume ~ factor(month), na.action = na.exclude) %>% resid()) %>% 
+  ggplot(aes(date, rel_log_volume)) + 
+  geom_line(aes(group = city), alpha = .2) + 
+  geom_line(stat = 'summary', fun = mean, color = 'red', size = 1) + 
+  labs(y = 'Relative log volumne') + 
+  theme_economist_white()
+```
+
+
+
+4. Not all the cities in this data set have complete time series. Use your dplyr
+skills to figure out how much data each city is missing. Display the results
+with a visualisation.
+```{r message = F}
+# For each city, calculate the number of missing values of each column
+# and a marginal column `total` that shows the total number of missing values of each city
+missing <- txhousing %>%
+  group_by(city) %>%
+  # calulate the number of missing values in each column, grouped by city
+  summarize(across(everything(), ~ sum(is.na(.)))) %>%
+  # add marginal column
+  rowwise() %>% mutate(total = sum(c_across(!city))) %>%
+  # order city by the total number of missing values, from largest to smallest
+  arrange(desc(total))
+
+missing
+```
+```{r}
+missing %>% 
+  ggplot(aes(city %>% fct_reorder(total), total)) +
+  geom_col(fill = 'tomato', color = 'white') +
+  labs(y = 'Total number of missing values', x = 'city') + 
+  coord_flip() +
+  scale_y_continuous(expand = expansion(mult = c(0, .1))) +
+  theme_minimal() +
+  theme(axis.text.y = element_text(size = 6))
+```
+
+
+5. Replicate the computation that `stat_summary()` did with dplyr so you can
+plot the data “by hand”.
+
+```{r}
+txhousing_rel %>%
+  group_by(date) %>% mutate(avg_rel = mean(rel, na.rm = T)) %>%
+  ggplot(aes(date, avg_rel)) + 
+  geom_line(color = 'red', size = 1) + 
+  labs(y = 'Average relative log price') + 
+  theme_economist_white()
+```
+# 11.4 Visualizing Models
+
+The previous examples used the linear model just as a tool for removing
+trend: we fit the model and immediately threw it away. We didn’t care about
+the model itself, just what it could do for us. But the models themselves
+contain useful information and if we keep them around, there are many new
+problems that we can solve:
+
+- We might be interested in cities where the model didn’t fit well: a poorly
+fitting model suggests that there isn’t much of a seasonal pattern, which
+contradicts our implicit hypothesis that all cities share a similar pattern.
+
+- The coefficients themselves might be interesting. In this case, looking at
+the coefficients will show us how the seasonal pattern varies between cities.
+
+- We may want to dive into the details of the model itself, and see exactly
+what it says about each observation. For this data, it might help us find
+suspicious data points that might reflect data entry errors.
+
+To take advantage of this data, we need to store the models
+
+```{r}
+# Build a linear model predict log2(sales) given month for each city
+txhousing_model <- txhousing %>% 
+  group_nest(city) %>% 
+  # mapping nested data of each city to a linear model
+  mutate(model = data %>% map(~ lm(log2(sales) ~ factor(month), data = ., na.action = na.exclude)))
+
+txhousing_model
+```
+To visualise these models, we’ll turn them into tidy data frames. We’ll do
+that with the **broom** package by David Robinson.
+```{r}
+library(broom)
+```
+
+Broom provides three key verbs, each corresponding to one of the challenges outlined above:
+
+• `glance()` extracts **model**-level summaries with one row of data for each
+model. It contains summary statistics like the R2 and degrees of freedom.
+
+• `tidy()` extracts **coefficient**-level summaries with one row of data for each
+coefficient in each model. It contains information about individual coefficients like their estimate and standard error.
+
+• `augment()` extracts **observation**-level summaries with one row of data for
+each observation in each model. It includes variables like the residual and
+influence metrics useful for diagnosing outliers.
+
+
+# 11.5 Model-level Summaries    
+```{r message = F}
+# This book is old, now I found that the function glance is in the generics package
+library(generics)
+```
+
+
+We’ll begin by looking at how well the model fit to each city with `generics::glance()`:
+
+The function `generics::glance(x, ...)` takes a model `x` and return a one-row data frame summary of a model, fit, or other object 
+
+```{r}
+model_summary <- 
+  txhousing_model %>% 
+  # For each linear model of a city, map it to a one-row data frame summary
+  mutate(summary = model %>% map(generics::glance)) %>%
+  # Unnest wider the one-row data frame summary from each cell
+  unnest_wider(summary)
+
+model_summary
+```
+we’ll focus on the model fit summaries. $R^2$ is a reasonable place to start because it’s well known. 
+$R^2$ measures the goodness-of-fit of the model, how much variance the explanatory variable accounts for the total variance.  The higher $R^2$ is, the better model fits.  
+A model with high $R^2$ means that the linear model fits well, so there is a strong pattern in the data
+A model with low $R^2$ means that the linear model does not fit well, so the pattern in the data is weak.
+In this problem, the explanatory variable is month.   
+If $R^2$ is high, it means there is a strong seasonal pattern is the data
+
+We can use a dot plot to see the variation across cities:
+
+```{r fig.height = 5.5}
+model_summary %>% 
+  ggplot(aes(city %>% fct_reorder(r.squared), r.squared)) +
+  geom_point(size = 2, color = 'red') + 
+  labs(x = 'City') + 
+  coord_flip() +
+  theme_minimal()
+```
+
+It’s hard to picture exactly what those values of $R^2$ mean, so it’s helpful
+to pick out a few exemplars. The following code extracts and plots out the
+three cities with the highest and lowest $R^2$:
+
+```{r}
+top3 <- c("Bryan-College Station", "Lubbock", "NE Tarrant County")
+bottom3 <- c("McAllen", "Brownsville", "Harlingen")
+
+txhousing %>%
+  filter(city %in% c(top3, bottom3)) %>%
+  ggplot(aes(factor(month), log2(sales), group = year)) +
+  geom_line() + 
+  labs(x = 'Month', y = 'Sales (in log2 scale)') + 
+  facet_wrap(~ factor(city, levels = c(top3, bottom3)), 
+             scales = 'free_y') +                            # free y scale to look at individual facet
+  theme_economist_white() +
+  theme(strip.background = element_rect(fill = 'black'),
+        strip.text = element_text(color = 'white', 
+                                  margin = margin(5,1,5,1)))
+  
+```
+The cities with low $R^2$ have weaker seasonal patterns and more variations between years.  
+The data for Harlingen seems particularly noisy.
+
+## 11.5.1 Exercises
+1. Do your conclusions change if you use a different measurement of model
+fit like AIC or deviance? Why/why not?
+
+- **deviance**: is a measure of goodness of fit: the smaller the deviance, the better the fit. Model fitting is achieved by maximum likelihood.
+
+- **AIC**: is used to compare different possible models and determine which one is the best fit for the data. The best-fit model to the AIC is the one that explains the greatest amount of variation using the fewest possible independent variables. The lower the AIC, the better.
+
+```{r fig.height = 5.5}
+model_summary %>% 
+  mutate(city = fct_reorder(city, AIC)) %>%
+  ggplot(aes(city, AIC)) + 
+  geom_point() + 
+  coord_flip() + 
+  theme_minimal()
+```
+```{r fig.height = 5.5}
+model_summary %>% 
+  mutate(city = fct_reorder(city, deviance)) %>%
+  ggplot(aes(city, deviance)) + 
+  geom_point() + 
+  coord_flip() + 
+  theme_minimal()
+```
+From both picture:
+* 3 cites with lowest AIC and deviance: Midland, Dallas and El Paso       
+* 3 cities with highest AIC deviance: Harlingen, San Marcos and Brownville
+
+2. One possible hypothesis that explains why McAllen, Harlingen and
+Brownsville have lower $R^2$ is that they’re smaller towns so there are fewer
+sales and more noise. Confirm or refuse this hypothesis.
+
+Confirm
+```{r}
+txhousing %>% 
+  ggplot(aes(date, sales, group = city, color = city %in% bottom3)) +
+  geom_line(alpha = .8) + 
+  scale_y_continuous(trans = 'log2') +
+  scale_color_manual(values = c('grey80', 'red'), 
+                     label = c('Other cities', bottom3 %>% str_c(collapse = ', ')),
+                     guide = guide_legend(override.aes = list(alpha = 1),
+                                          title = 'City',
+                                          label.theme = element_text(size = 10))) +
+  theme_economist_white()
+```
+
+
+3. McAllen, Harlingen and Brownsville seem to have much more year-to-year
+variation than Bryan-College Station, Lubbock, and NE Tarrant County.
+How does the model change if you also include a linear trend for year? (i.e.
+`log(sales) ~ factor(month) + year`).
+
+```{r}
+model_summary_month_year <- txhousing %>% 
+  group_nest(city) %>% 
+  mutate(model = data %>% map(~lm(log2(sales) ~ factor(month) + year, data = .))) %>%
+  mutate(summary = model %>% map(glance)) %>% 
+  unnest(summary)
+
+model_summary_month_year
+```
+```{r fig.height = 5.5}
+model_summary_month_year %>% 
+  mutate(city = city %>% fct_reorder(r.squared)) %>%
+  ggplot(aes(city, r.squared)) +
+  geom_point(size = 2) + 
+  coord_flip() +
+  theme_minimal()
+```
+In top 3 cities with highest $R^2$, Bryan-college station and Lubbock are still in. But Fort bend is in the second place. NA terrant country is out of top 3 cities with highest $R^2$. The sales pattern based on month and year of city Fort Bend is stronger then NE Terrant Country.
+
+In top 3 cities with lowest $R^2$, McAllen and Brownsville are still in. But Harligen is out and have higher spot, being replaced by Port Arthur.
+
+
+4. Create a faceted plot that shows the seasonal patterns for all cities.
+Order the facets by the $R^2$ for the city
+
+```{r fig.width = 10}
+model_summary %>%
+  # restore information like month, volume, listings, ... by unnest column data
+  unnest(data) %>%
+  mutate(city = city %>% fct_reorder(r.squared)) %>% 
+  ggplot(aes(month, log2(sales), group = year)) +
+  geom_line() + 
+  scale_x_continuous(n.breaks = 4) + 
+  facet_wrap(~ city, nrow = 8, scales = 'free_y') +
+  theme_economist_white() +
+  theme(strip.text = element_text(size = 8, color = 'white', margin = margin(2, 1, 2, 1)),
+        strip.background = element_rect(fill = 'black'),
+        
+        axis.text.y = element_blank())
+```
+# 11.6 Coefficient-level Summaries
+
+`generics::tidy()` extracts coefficient-level summaries with one row of data for each
+coefficient in each model. It contains information about individual coefficients like their estimate and standard error.
+```{r}
+coefs <- txhousing_model %>% mutate(coefs = model %>% map(generics::tidy))  %>% unnest(coefs)
+coefs
+```
+
+We’re more interested in the month effect, so we’ll do a little extra tidying
+to only look at the month coefficients, and then to extract the month value
+into a numeric variable:
+
+```{r}
+coefs <- coefs %>% 
+  filter(term != '(Intercept)') %>%
+  extract(term, 'month', regex = '(\\d+)', convert = T)
+
+coefs
+```
+Here we’ll put month on the x-axis, estimate on the y-axis,
+and draw one line for each city. I’ve back-transformed to make the coefficients
+more interpretable: these are now ratios of sales compared to January.
+
+```{r}
+coefs %>% 
+  ggplot(aes(month, estimate, group = city)) + 
+  geom_line() + 
+  theme_economist_white()
+```
+The pattern seems similar across countries. The main difference is the strength of the seasonal effect.
+
+```{r message = F, fig.height = 5.5}
+coefs_sum <- coefs %>%
+  group_by(city) %>% 
+  summarize(max = max(estimate))
+
+coefs_sum %>% 
+  mutate(city = city %>% fct_reorder(max)) %>% 
+  ggplot(aes(city, max)) + 
+  geom_point(size = 2) + 
+  coord_flip() + 
+  theme_minimal()
+```
+The cities with the strongest seasonal effect are College Station and San
+Marcos (both college towns) and Galveston and South Padre Island (beach
+cities). It makes sense that these cities would have very strong seasonal effects.
+
+
+## 11.6.1 Exercises
+1. Pull out the three cities with highest and lowest seasonal effect. Plot their coefficients.
+```{r}
+coefs_sum %>% 
+  slice_max(max, n = 3) %>%
+  add_row(coefs_sum %>% slice_min(max, n = 3)) %>%
+  mutate(city = city %>% fct_reorder(max)) %>% 
+  ggplot(aes(city, max)) + 
+  geom_col(fill = 'tomato') + 
+  labs(y ='Maximum coefficient') + 
+  theme_economist() +
+  theme(axis.text.x.bottom = element_text(size = 8))
+```
+
+
+2. How does strength of seasonal effect relate to the $R^2$ for the model? Answer
+with a plot.
+
+```{r}
+coefs_sum %>%
+  inner_join(model_summary, by = 'city') %>%
+  ggplot(aes(max, r.squared)) + 
+  geom_point() +
+  labs(x = 'Maximum coefficient') +
+  theme_bw()
+```
+
+
+3. You should be extra cautious when your results agree with your prior
+beliefs. How can you confirm or refuse my hypothesis about the causes of
+strong seasonal patterns?
+
+Hypothesis:
+The cities with the strongest seasonal effect are College Station and San Marcos (both college towns) and Galveston and South Padre Island (beach cities). It makes sense that these cities would have very strong seasonal effects.
+
+```{r}
+strongest_seasonal_cities <- c('Bryan-College Station', 'Galveston', 'San Marcos', 'South Padre Island')
+
+txhousing %>% 
+  filter(city %in% strongest_seasonal_cities) %>% 
+  ggplot(aes(month, sales, group = year, color = factor(year))) + 
+  geom_line(show.legend = F) + 
+  # Do not share y axis, focus on each individual facet rather than comparing between facets
+  facet_wrap(~ city, scales = 'free_y') + 
+  theme_economist_white()
+```
+4. Group the diamonds data by cut, clarity and colour. Fit a linear model
+`log(price) ~ log(carat)`. What does the intercept tell you? What does the
+slope tell you? How do the slope and intercept vary across the groups?
+Answer with a plot.
+
+
+$log(price) = slope * log(carat) + intercept$
+
+The slope tells us  if `log(carat)` increases by 1 unit, `log(price)` will increase by `slope` USD.
+Or, if `carat` increases by x unit, price will be increased $e^x$ times.  
+Each time you increase the value of `carat` by 1 unit, the price will be increased $e$ times.
+For example, if carat increases by 2, the new price will be $e^2 * old_price$.
+
+The intercept tells us the expected price for 1 carat is $e^intercept$
+
+```{r}
+diamonds_coefs <- diamonds %>% 
+  #nesting data for each group to fit a linear model
+  group_nest(cut, clarity, color) %>% 
+  # fit a linear model for each group
+  mutate(model = data %>% map(~ lm(log(price) ~ log(carat), data = .))) %>%
+  # mapping each model to a coefficient-summaries
+  mutate(coefs = model %>% map(generics::tidy)) %>%
+  # unnest each tibble from column `coefs`
+  unnest(coefs)
+
+diamonds_coefs
+```
+
+```{r}
+diamonds_slope_intercept <- diamonds_coefs %>% 
+  select(cut, clarity, color, term, estimate) %>%
+  # make 2 columns contains the values of slope and intercept for each group
+  pivot_wider(names_from = term, values_from = estimate) %>%
+  # rename
+  rename(intercept = '(Intercept)', slope = 'log(carat)')
+
+diamonds_slope_intercept
+```
+
+```{r fig.width =  10}
+# See the pattern in each individual facet
+diamonds_slope_intercept %>% 
+  ggplot(aes(color, intercept, group = cut, color = cut)) +
+  geom_point() + 
+  geom_line(stat = 'summary', fun = mean) +
+  scale_color_brewer(palette = 'Set2') + 
+  facet_wrap(~ clarity, nrow = 2, scales = 'free_y') + 
+  theme_dark() +
+  theme(legend.position = 'top')
+```
+We can clearly see a pattern here. For 1 carat, the expected price (the intercept) decreases as the quality of the diamond decreases. For the same quality, diamonds with better cut will have higher expected price. The pattern across clarity is quite similar. The pattern for diamonds with lowest clarity (I1) is noisy.
+```{r fig.width = 10}
+# Compare the intercept when the clarity changes
+diamonds_slope_intercept %>% 
+  ggplot(aes(color, intercept, group = cut, color = cut)) +
+  geom_point() + 
+  geom_line(stat = 'summary', fun = mean) +
+  scale_color_brewer(palette = 'Set2') + 
+  facet_wrap(~ clarity, nrow = 2) + 
+  theme_dark() +
+  theme(legend.position = 'top')
+```
+As the clarity increases, the intercept (expected price increases for 1 carat) tend to increase 
+
+
+- For slope
+```{r fig.width = 10}
+diamonds_slope_intercept %>% 
+  ggplot(aes(color, slope, group = cut, color = cut)) +
+  geom_point() + 
+  geom_line(stat = 'summary', fun = mean) +
+  scale_color_brewer(palette = 'Set2') + 
+  facet_wrap(~ clarity, nrow = 2) + 
+  theme_dark() +
+  theme(legend.position = 'top')
+```
+
+# 11.7 Observational Data
+
+Observation-level data, which include residual diagnostics, is most useful in the traditional model fitting scenario, because it can helps you find “high leverage” points, point that have a big influence on the final model. It’s also useful in conjunction with visualization, particularly because it provides an alternative way to access the residuals.
+
+`generics::augment()` extracts **observation**-level summaries with one row of data for
+each observation in each model. It includes variables like the residual and
+influence metrics useful for diagnosing outliers.
+
+```{r}
+obs_sum <- txhousing %>% 
+  group_nest(city) %>% 
+  # Create a linear model for each city
+  mutate(model = data %>% map(~ lm(log2(sales) ~ factor(month), data = .))) %>% 
+  mutate(obs = model %>% map(generics::augment)) %>% 
+  unnest(obs)
+
+obs_sum
+```
+For example, it might be interesting to look at the distribution of standardised residuals. (These are residuals standardised to have a variance of one in each model, making them more comparable.) We’re looking for unusual values that might need deeper exploration:
+
+```{r}
+obs_sum %>% 
+  ggplot(aes(.std.resid)) +
+  geom_histogram(binwidth = .1) +
+  theme_minimal()
+```
+A threshold of 2 seens like a reasonable threshold to explore individually:
+```{r message = F}
+obs_sum %>%
+  filter(abs(.std.resid) > 2) %>% 
+  group_by(city) %>% 
+  summarize(n = n(), avg.std.resid = mean(.std.resid))
+```
+In a real analysis, you’d want to look into these cities in more detail.
+
+## 11.7.1 Exercises
+1. A common diagnostic plot is fitted values (`.fitted`) vs. residuals (`.resid`).
+Do you see any patterns? What if you include the city or month on the same plot?
+
+```{r}
+obs_sum %>% 
+  mutate(.resid = `log2(sales)` - .fitted) %>%
+  ggplot(aes(.fitted, .resid)) + 
+  geom_point(alpha = .1) +
+  theme_bw()
+```
+
+
+2. Create a time series of `log(sales)` for each city. Highlight points that have a standardised residual of greater than 2.
+
+```{r}
+obs_sum %>%
+  unnest(data) %>% 
+  ggplot(aes(date, log2(sales), group = city, color = abs(.std.resid) >= 2)) + 
+  geom_line() +
+  scale_color_manual(values = c('grey70', 'red')) + 
+  theme_economist_white()
+```
+

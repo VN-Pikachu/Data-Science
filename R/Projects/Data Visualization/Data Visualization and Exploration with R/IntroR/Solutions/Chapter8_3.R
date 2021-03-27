@@ -1,0 +1,5 @@
+library(rgdal)
+wild <- readOGR('.', 'S_USA.Wilderness')
+wild <- fortify(wild)
+montana <- qmap("Montana", zoom=6)
+montana + geom_polygon(aes(x=long,y=lat, group=group, alpha=0.25), data=wild, fill='white') + geom_polygon(aes(x=long,y=lat, group=group), data=wild, color='black', fill=NA)

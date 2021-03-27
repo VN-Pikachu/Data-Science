@@ -1,0 +1,6 @@
+dfWildfires <- read_csv("StudyArea.csv", col_types = list(UNIT = col_character()), col_names = TRUE)
+df <- select(dfWildfires, ORGANIZATI, STATE, YEAR_, TOTALACRES, CAUSE)
+df <- filter(df, STATE == 'California')
+grp <- group_by(df, YEAR_)
+ggplot(data=grp) + geom_bar(mapping = aes(x=YEAR_), fill="red")
+ggplot(data=grp) + geom_col(mapping = aes(x=YEAR_, y=TOTALACRES), fill="red")

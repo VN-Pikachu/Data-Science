@@ -1,0 +1,27 @@
+quick visualization reference for colormap, line properties, ...: https://scipy-lectures.org/intro/matplotlib/index.html#quick-references
+--------------------------------------------------
+matplotlib community: https://discourse.matplotlib.org/
+---------------------------------------------
+best resoure: matplotlib.org Tutorial
+https://matplotlib.org/tutorials/index.html
+--------------------------------------------
+set properties for an object:
+plt.setp(obj, **kwargs)
+e.g: plt.setp(tick_label_object, rotation=45, horizontalalignment='right')
+--------------------------------------------------
+Turn off both axis: plt.axis('off')
+-----------------------
+plt.axis('scaled')
+---------------------
+turn off an object(e.g: Line2D, axes, ...) use: Object.set_visible(False)
+--------------------
+ax.get_ylabel()
+ax.set_ylabel(ax.get_ylabel(), rotation = 30)
+------------------
+Turn on backend:
+%matplotlib notebook
+
+To turn to interative mode:
+%matplotlib inline
+--------------------
+area plot: plt.stackplot

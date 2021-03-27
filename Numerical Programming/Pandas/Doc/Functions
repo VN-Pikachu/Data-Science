@@ -1,0 +1,5 @@
+DataFrame.append
+pd.concat
+DataFrame.count
+DataFrame.select_types
+isin

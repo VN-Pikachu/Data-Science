@@ -1,0 +1,45 @@
+If a distribution is not normal, it cannot be summarized with only the mean and standard deviation. Provide a histogram, smooth density or boxplot instead.
+---------------------------------------------------------
+Visual cues for encoding data include position, length, angle, area, brightness and color hue.
+
+As demonstrated by perception studies,
+humans are not good at precisely quantifying angles,
+and are even worse when only area is available.
+This makes the donut chart, which only uses area, even worse
+than the pie chart.
+
+Human are much more better at LENGTH and POSITION
+
+In summary, position and length are the preferred way
+to display quantities over angles, which are preferred over area.
+
+Position and length are the preferred way to display quantities, followed by angles, which are preferred over area. Brightness and color are even harder to quantify but can sometimes be useful.
+
+Pie charts represent visual cues as both angles and area, while donut charts use only area. Humans are not good at visually quantifying angles and are even worse at quantifying area. Therefore pie and donut charts should be avoided - use a bar plot instead. If you must make a pie chart, include percentages as labels.
+
+Bar plots represent visual cues as position and length. Humans are good at visually quantifying linear measures, making bar plots a strong alternative to pie or donut charts.
+-----------------------------------------------------------------------------------
+When to Include Zero?
+
+When using position (e.g scatter plot) rather than length (e.g: the height of each bar in bar plot), then it is not necessary to include 0
+This is particularly the case when we want to compare differences between groups relative to the variability seen within the groups
+
+When using bar plots, always start at 0. It is deceptive not to start at 0 because bar plots imply length is proportional to the quantity displayed. Cutting off the y-axis can make differences look bigger than they actually are.
+When using position rather than length, it is not necessary to include 0 (scatterplot, dot plot, boxplot).
+--------------------------------------------------------------------------------------
+Make sure your visualizations encode the correct quantities.
+For example, if you are using a plot that relies on circle area, make sure the area (rather than the radius) is proportional to the quantity.
+
+e.g: for quantity of 5 and 10, then the area of the circle of value 5 should equal 1 / 2 the area of the circle of value 10
+---------------------------
+It is easiest to visually extract information from a plot when categories are ordered by a meaningful value. The exact value on which to order will depend on your data and the message you wish to convey with your plot.
+The default ordering for categories is alphabetical if the categories are strings or by factor level if factors. However, we rarely want alphabetical order.
+--------------------
+Bar plot is useful for showing one number, but not very useful to describe distribution
+-----------------------------
+Use transformations when warranted to ease visual interpretation.
+
+Transformations you should consider are:
+* The `logistic transformation`: useful to better see fold changes in odds
+* The `square root transformation`, useful for count data.
+* the `log transformation` is useful for data with multiplicative changes

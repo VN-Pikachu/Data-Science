@@ -1,0 +1,6 @@
+ggplot(data=sm, aes(x=YEAR_, y=log(totalacres))) + geom_point() + geom_smooth(method=loess, se=TRUE) + geom_text(aes(label=STATE), size=3)
+ggplot(data=sm, aes(x=YEAR_, y=log(totalacres))) + geom_point() + geom_smooth(method=loess, se=TRUE) + geom_text(aes(label=STATE), size=3, check_overlap = TRUE)
+ggplot(data=sm, aes(x=YEAR_, y=log(totalacres))) + geom_point() + geom_smooth(method=loess, se=TRUE) + geom_text(aes(label=STATE), size=2, check_overlap = TRUE, nudge_x = 2.0)
+ggplot(data=sm, aes(x=YEAR_, y=log(totalacres))) + geom_point() + geom_smooth(method=loess, se=TRUE) + geom_text(aes(label=STATE, color=STATE), size=2, check_overlap = TRUE, nudge_x = 2.0)
+ggplot(data=sm, aes(x=YEAR_, y=log(totalacres))) + geom_point() + geom_smooth(method=loess, se=TRUE) + labs(title=paste("Acreage Burned by Wildfires Has Increased In the Past Few Decades"), subtitle=paste("1980-2016"), caption="Data from USGS")
+ggplot(data=sm, aes(x=YEAR_, y=log(totalacres))) + geom_point() + geom_smooth(method=loess, se=TRUE) + labs(title=paste("Acreage Burned by Wildfires Has Increased In the Past Few Decades"), subtitle=paste("1980-2016"), caption="Data from USGS") + scale_y_continuous(name="Log of Total Acres Burned") + scale_x_continuous(name="Burn Year")

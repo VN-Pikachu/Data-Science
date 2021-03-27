@@ -1,0 +1,775 @@
+---
+title: "R exercises"
+author: "Pikachu"
+date: "12/14/2020"
+output: html_document
+---
+
+Reference: <https://maths-people.anu.edu.au/~johnm/courses/r/exercises/pdf/r-exercises.pdf>
+
+```{r}
+library(tidyverse)
+library(DAAG)
+library(MASS)
+```
+
+# Part I. R Basics
+
+## 1. Data input
+
+## 2. Missing vallue
+
+### Exercise 3
+>The following counts, for each species, the number of missing values for the column `root` of the data
+frame `rainforest` (`DAAG`):
+
+```{r Exercise 3}
+rainforest <- as_tibble(rainforest)
+rainforest
+```
+
+```{r}
+rainforest %>% group_by(species) %>% summarize(n_missing = sum(is.na(root)))
+```
+### Exercise 4
+>For each column of the data frame `Pima.tr2` (MASS), determine the number of missing values
+
+```{r Exercise 4}
+Pima.tr2
+```
+
+```{r}
+Pima.tr2 %>% summarize(across(everything(), ~ sum(is.na(.))))
+```
+
+Or you see the number of missing values in each column by using `summary`:
+
+```{r}
+Pima.tr2 %>% summary()
+```
+
+## 3. Useful functions
+### Exercise 5
+>The function `dim()` returns the dimensions (a vector that has the number of rows, then number of
+columns) of data frames and matrices. Use this function to find the number of rows in the data
+frames `tinting`, `possum` and `possumsites` (all in the `DAAG` package).
+
+```{r}
+dim(tinting)
+
+dim(possum)
+
+dim(possumsites)
+```
+
+Alternatively, you can use `tibble::tbl_sum`:
+
+```{r}
+tinting %>% tbl_sum()
+
+possum %>% tbl_sum()
+
+possumsites %>% tbl_sum()
+```
+
+### Exercise 6
+>Use the functions `mean()` and `range()` to find the mean and range of:
+(a) the numbers 1, 2, . . . , 21
+(b) the sample of 50 random normal values, that can be generated from a normaL distribution
+with mean 0 and variance 1 using the assignment `y <- rnorm(50)`.
+(c) the columns height and weight in the data frame women.
+[The datasets package that has this data frame is by default attached when R is started.]
+Repeat (b) several times, on each occasion generating a nwe set of 50 random numbers.
+
+```{r}
+mean(1:21)
+
+range(1:21)
+```
+
+```{r}
+# The mean of range of 50 random normal values
+data <- rnorm(50)
+mean(data)
+
+range(data)
+```
+
+## 4. Subset of Data Frames
+
+### Exercise 8
+
+>Use `head()` to check the names of the columns, and the first few rows of data, in the data frame
+`rainforest` (DAAG). Use `table(rainforest$species)` to check the names and numbers of each
+species that are present in the data
+
+```{r}
+head(rainforest)
+```
+
+```{r}
+# The number of observtion for each species
+rainforest %>% count(species)
+```
+>Now extract the rows for all species except C. fraseri
+
+```{r}
+rainforest %>% filter(species != 'C. fraseri')
+```
+
+### Exercise 9
+
+>Extract the following subsets from the data frame `ais` (DAAG):
+(a) Extract the data for the rowers.
+(b) Extract the data for the rowers, the netballers and the tennis players.
+(c) Extract the data for the female basketabllers and rowers.
+
+```{r}
+ais
+```
+
+```{r}
+ais %>% glimpse()
+```
+
+```{r}
+# unique sports
+ais %>% pull(sport) %>% levels()
+```
+
+```{r}
+# extract the data for the rower
+ais %>% filter(sport == 'Row')
+```
+
+```{r}
+# extract the data for the rowers, the netballs and the tennis players
+ais %>% filter(sport %in% c('Tennis', 'Netball','Row'))
+```
+
+```{r}
+# extract the data for the female basketballers and rowers
+
+ais %>% filter(sport %in% c('B_Ball', 'Row'), sex == 'f') 
+```
+
+## 5. Scatter plot
+
+### Exercise 10
+
+>Using the `Acmena` data from the data frame rainforest, plot `wood` (wood biomass) vs `dbh` (diameter
+at breast height), trying both untransformed scales and logarithmic scales. 
+
+```{r}
+Acmena <- rainforest %>% filter(species == 'Acmena smithii')
+
+# untransformed scale
+Acmena %>% ggplot(aes(dbh, wood)) + geom_point() 
+```
+
+```{r}
+# log scale
+Acmena %>% ggplot(aes(dbh, wood)) + 
+    geom_point() + 
+    geom_smooth(method = 'lm', color = 'red') + 
+    scale_y_continuous(trans = 'log2') + 
+    scale_x_continuous(trans = 'log2') + 
+    theme_bw()
+```
+
+### Exercise 12
+>The `orings` data frame gives data on the damage that had occurred in US space shuttle launches
+prior to the disastrous Challenger launch of January 28, 1986. Only the observations in rows 1, 2,
+4, 11, 13, and 18 were included in the pre-launch charts used in deciding whether to proceed with
+the launch. Add a new column to the data frame that identifies rows that were included in the
+pre-launch charts. Now make three plots of Total incidents against Temperature:
+(a) Plot only the rows that were included in the pre-launch charts.
+(b) Plot all rows.
+(c) Plot all rows, using different symbols or colors to indicate whether or not points were included
+in the pre-launch charts.
+Comment, for each of the first two graphs, whether and open or closed symbol is preferable. For
+the third graph, comment on the your reasons for choice of symbols.
+
+```{r}
+orings
+```
+```{r}
+orings_data <- orings %>% mutate(pre_launched = row_number() %in% c(1, 2, 4, 11, 13, 18))
+
+orings_data
+
+```
+ Now make three plots of `Total` incidents against `Temperature`
+ 
+```{r}
+# Plot only the rows that were included in the pre-launch charts.
+orings_data %>% 
+    filter(pre_launched) %>% 
+    ggplot(aes(Temperature, Total)) +
+    geom_point()
+```
+ 
+```{r}
+# Plot all rows
+orings_data %>% 
+    ggplot(aes(Temperature, Total)) + 
+    geom_point() 
+```
+ 
+```{r}
+# Plot all rows, using different symbols or colors to indicate whether or not points were included
+# in the pre-launch charts.
+orings_data %>% 
+    ggplot(aes(Temperature, Total, color = pre_launched)) + 
+    geom_point() +
+    scale_color_brewer(palette = 'Set1') + 
+    theme_bw()
+```
+ 
+### Exercise 13
+>Using the data frame `oddbooks`, use graphs to investigate the relationships between:
+>(a) weight and volume;  
+(b) density and volume;  
+(c) density and page area.
+
+```{r}
+oddbooks
+```
+
+```{r}
+# weight vs volume
+oddbooks %>% 
+    mutate(volume = thick * height * breadth) %>% 
+    ggplot(aes(volume, weight)) + 
+    geom_point()
+```
+
+```{r}
+# density and volume
+oddbooks %>% 
+    mutate(volume = thick * height * breadth, density = weight / volume) %>% 
+    ggplot(aes(density, volume)) + 
+    geom_point() 
+```
+
+```{r}
+# density and page area
+oddbooks %>% 
+    mutate(density = weight / height / thick / breadth, area = height * breadth) %>% 
+    ggplot(aes(area, density)) + 
+    geom_point() 
+```
+
+## 6. Factor
+
+## 7. Dotplots and Striplots
+
+### Exercise 17
+>Check the class of each of the columns of the data frame `cabbages` (MASS). Do side by side plots
+of `HeadWt` against `Date`, for each of the levels of `Cult`.
+
+```{r}
+cabbages
+```
+
+```{r}
+cabbages%>% 
+    ggplot(aes(Date, HeadWt)) + 
+    geom_dotplot(binaxis = 'y', stackdir = 'center') +
+    facet_wrap(~ Cult, labeller = 'label_both') + 
+    theme_light()
+```
+
+### Exercise 18
+>In the data frame `nsw74psid3`, use `stripplot()` to compare, between levels of `trt`, the continuous
+variables `age`, `educ`, `re74` and `re75`
+It is possible to generate all the plots at once, side by side. 
+
+```{r}
+nsw74psid3 %>% 
+    mutate(trt = as.factor(trt)) %>% 
+    pivot_longer(c(age, educ, re74, re75), 
+                 names_to = 'variables',
+                 values_to = 'value') %>% 
+    ggplot(aes(trt, value)) +
+    geom_dotplot(binaxis = 'y', stackdir = 'center') + 
+    facet_wrap(~ variables, scales = 'free')
+```
+
+## 8. Tabulation
+
+### Exercise 19
+>In the data set nswpsdi1 (DAAGxtras), do the following for each of the two levels of trt:
+(a) Determine the numbers for each of the levels of black;
+(b) Determine the numbers for each of the levels of hispanic; item Determine the numbers for
+each of the levels of marr (married).
+
+```{r}
+nswpsid1
+```
+
+## 9. Sorting
+
+>Exercise 20
+Sort the rows in the data frame `Acmena` in order of increasing values of `dbh`
+
+```{r}
+Acmena %>% 
+    arrange(dbh)
+```
+>Sort the row names of `possumsites` (DAAG) into alphanumeric order. Reorder the rows of `possumsites` in order of the row names.
+
+```{r}
+possumsites %>% 
+    rownames_to_column() %>% 
+    arrange(rowname) %>% 
+    column_to_rownames()
+```
+## 10. For loops
+
+### Exercise 22
+
+>(a) Create a for loop that, given a numeric vector, prints out one number per line, with its square
+and cube alongside.
+(b) Look up help(while). Show how to use a while loop to achieve the same result.
+(c) Show how to achieve the same result without the use of an explicit loop.
+
+```{r}
+1:10 %>% walk(~ cat(., . * ., . *. * ., '\n'))
+```
+## 11. The `paste()` function
+
+## 12. A function
+
+# Part 2. Further practice with R
+
+## 1. Information about the Columns of Data Frames
+
+### Exercise 1
+
+>Extract numeric columns from data frame `cabbages`
+
+```{r}
+cabbages %>% dplyr::select(where(is.numeric))
+```
+
+### Exercise 2
+>Functions that may be used to get information about data frames include `str()`, `dim()`,
+`row.names()` and `names()`. Try each of these functions with the data frames `allbacks`, `ant111b`
+and `tinting` (all in `DAAG`)
+
+I think using tibble is a much better way to get information about rows and columns of a data frame. But let's just follow the instructions:
+
+```{r}
+allbacks %>% str()
+```
+
+```{r}
+allbacks %>% rownames()
+
+```
+```{r}
+allbacks %>% names()
+
+```
+```{r}
+allbacks %>% dim()
+
+```
+
+
+
+## 2. Tabulation Exercises
+
+### Exercise 3
+
+>In the data set `nswpsdi1` (`DAAGxtras`) create a factor that categorizes subjects as: (i) black; (ii)
+hispanic; (iii) neither black nor hispanic
+
+```{r}
+nswpsid1 %>% glimpse()
+```
+
+
+```{r}
+nswpsid1 %>% 
+    mutate(category = case_when(
+        black == 1 ~ 'black',
+        hisp == 1 ~ 'hispanic',
+        T ~ 'neither black or hispanic'
+    ), .before = 1)
+```
+
+### Exercise 4
+Tabulate the number of observations in each of the different districts in the data frame `rockArt`
+(`DAAGxtras`). Create a factor `groupDis` in which all Districts with less than 5 observations are
+grouped together into the category other.
+
+```{r}
+rockArt
+```
+
+```{r}
+rockArt1 <- rockArt %>% 
+    mutate(groupDis = District %>% fct_lump_min(5))
+
+rockArt1 %>% count(groupDis)
+```
+
+## 3. Data Exploration – Distributions of Data Values
+
+>The data frame `rainforest` (DAAG package) has data on four different rainforest species. Use
+`table(rainforest$species)` to check the names and numbers of the species present. In the sequel,
+attention will be limited to the species `Acmena smithii`. The following plots a histogram showing
+the distribution of the diameter at base height:
+
+```{r}
+rainforest %>% count(species)
+```
+```{r}
+rainforest %>% 
+    filter(species == 'Acmena smithii') %>% 
+    ggplot(aes(dbh, ..density..)) + 
+    geom_histogram(binwidth = 1) +
+    theme_light()
+```
+## 4. The `paste()` function
+
+## 5. Random samples
+
+Using **`base::sample`** to random sample
+
+## 6. Further Practice with Data Input 
+
+# Part III. Informal and Formal Data Exploration
+
+## 1 Rows with Missing Data – Are they Different
+
+### Exercise 1
+
+>Look up the help page for the data frame `Pima.tr2` (MASS package), and note the columns in
+the data frame. The eventual interest is in using use variables in the first seven column to classify
+diabetes according to `type`. Here, we explore the individual columns of the data frame.
+(a) Several columns have missing values. Analysis methods inevitably ignore or handle in some
+special way rows that have one or more missing values. It is therefore desirable to check
+whether rows with missing values seem to differ systematically from other rows.
+Determine the number of missing values in each column, broken down by `type`.
+
+```{r}
+Pima.tr2 %>% summary()
+```
+
+```{r}
+# Determine the number of missing values in each column, broken down by `type`.
+Pima.tr2 %>% 
+    group_by(type) %>% 
+    summarise(across(everything(), ~ sum(is.na(.))))
+```
+
+>Create a version of the data frame `Pima.tr2` that has `anymiss` as an additional column:
+
+```{r}
+p2 <- Pima.tr2 %>% mutate(anymiss = complete.cases(cur_data()))
+p2
+```
+
+>For remaining columns, compare the means for the two levels of `anymiss`, separately for each
+>level of `type`. Compare also, for each level of `type`, the number of missing values.
+
+```{r}
+p2 %>% 
+    group_by(type, anymiss) %>% 
+    summarize(across(everything(), mean, na.rm = T), n = n())
+```
+```{r}
+# For each level of `type`, the number of missing values
+p2 %>% 
+    group_by(type) %>% 
+    summarize(n_missing =sum(anymiss))
+```
+### Exercise 2
+(a) Use strip plots to compare values of the various measures for the levels of `anymiss`, for each of
+the levels of `type`. Are there any columns where the distribution of differences seems shifted
+for the rows that have one or more missing values, relative to rows where there are no missing
+values?
+
+```{r fig.width = 10}
+stripplot(anymiss ~ npreg + glu | type, data=p2, outer=TRUE,
+           scales=list(relation="free"), xlab="Measure")
+```
+>(b) Density plots are in general better than strip plots for comparing the distributions. Try the
+following, first with the variable `npreg` as shown, and then with each of the other columns
+except `type`. Note that for skin, the comparison makes sense only for type=="No". Why?
+
+```{r}
+p2 %>% 
+    mutate(type = c(No = 'No diabete', Yes = 'Diebete')[type]) %>% 
+    pivot_longer(c(npreg, glu, skin),
+                 names_to = 'variables',
+                 values_to = 'value') %>% 
+    ggplot(aes(value, color = factor(anymiss))) +
+    geom_density() + 
+    geom_rug() + 
+    facet_wrap(type ~ variables, scales = 'free', labeller = partial(label_value, multi_line = F))
+```
+
+## 2 Comparisons Using Q-Q Plots
+
+### Exercise 4
+Now consider the data set `Pima.tr2`, with the column `anymiss` added as above.
+
+```{r}
+
+```
+
+# Part IV. Examples that Extend or Challenge
+
+## 1. Further Practice with Data Input
+
+### Exercise 1
+Examine the contents of the initial lines of the file carefully before trying to read it in.
+>For a challenging data input task, input the data from `bostonc.txt`. Use `DAAG::datafile("bostonc")`
+
+```{r}
+# Take a look at the first 15 rows of the file
+head(read_lines('Data/bostonc.txt'), 15)
+```
+
+
+```{r}
+# skip first 9 rows that are description about the file
+
+boston <- read_tsv('Data/bostonc.txt', skip = 9)
+
+boston
+
+```
+
+
+### Exercise 2*
+Read in the file `crx.data` that is
+available from the web page <http://mlearn.ics.uci.edu/databases/credit-screening/>.
+Check the file `crx.names` to see which columns should be numeric, which categorical and which
+logical. Make sure that the numbers of missing values in each column are the number given in the
+file `crx.names`
+
+```{r}
+
+credit <- read_csv('Data/crx.txt', 
+                   col_names = str_c('A', 1:16),   # this file does not have header
+                   na = c('?'),                    # in this file, missing value is marked as ?
+                   col_types = cols(
+                       
+                       A9 = 'c',                   # According to crx.names, A9, A10, A12 type character
+                       A10 = 'c',                  # the value of 2 columns are t, f. If do not specifically specify
+                       A12 = 'c',                  # they will be parse as logical
+                       A11 = 'd',
+                       A14 = 'd'
+
+                   )
+)
+
+# column specification of imported data
+spec(credit)
+
+credit %>% glimpse()
+```
+
+```{r}
+credit %>% summary()
+```
+
+```{r}
+# proportion of row having at least 1 missing value
+credit %>%
+    mutate(anymiss = complete.cases(cur_data())) %>% 
+    summarise(missing_cases = sum(!anymiss), prop = missing_cases / n() * 100)
+```
+
+
+```{r}
+# Missing value in each column
+credit %>% 
+    summarize(across(everything(), ~ sum(is.na(.))))
+```
+
+```{r}
+# class distribution
+credit %>% count(A16) %>% mutate(prop = n / sum(n) * 100) 
+```
+## 2 Graphs with logarithmic scales
+
+### Exercise 3
+
+```{r}
+Acmena %>% 
+    ggplot(aes(dbh, wood)) + 
+    geom_smooth(method = 'lm') + 
+    geom_point() +
+    scale_x_log10() + 
+    scale_y_log10()
+```
+
+# 3 Information on Workspace Objects
+
+>Write a function that calculates the sizes of all objects in the workspace, then listing the names
+and sizes of the largest ten objects
+
+```{r}
+object_sizes <- ls() %>% set_names() %>% map_dbl(~ lobstr::obj_size(get(.)))
+
+object_sizes %>% enframe('object', 'size') %>% arrange(desc(size))
+```
+
+## 4. Different Ways to Do a Calculation – Timings
+
+## 5. Functions – Making Sense of the Code
+
+## 6. A Regression Estimate of the Age of the Universe
+
+>Exercise 8*
+Install the package `gamair` (from CRAN) and examine the help page for the data frame `hubble`.
+Type `data(hubble)` to bring the data into the workspace. (This is necessary because the `gamair`
+package, unlike most other packages, does not use the lazy loading mechanism for data.)
+
+```{r}
+library(gamair) 
+data(hubble)   # loading data into the 
+```
+
+```{r}
+hubble %>% glimpse()
+```
+
+>(a) Plot y (Velocity in km/sec) versus x (Distance in Mega-parsec = 3.09 × 10−19 km).
+
+```{r}
+hubble %>% 
+    ggplot(aes(x, y)) + 
+    geom_point()
+```
+>(b) Fit a line, omitting the constant term; for this the `lm()` function call is
+`kmTOmegaparsec <- 3.09*10^(-19)`
+`lm(I(y*kmTOmegaparsec) ~ -1 + x, data=hubble)` # y & x both mega-parsecs
+The inverse of the slope is then the age of the universe, in seconds. Divide this by 60x60×24×365
+to get an estimate for the age of the earth in years.
+[The answer should be around 13 × 10^9^ years.]
+
+```{r}
+kmTOmegaparsec <- 3.09*10^(-19)
+# fitting a linear model
+mod <- lm(I(y * kmTOmegaparsec) ~ -1 + x, data = hubble)
+```
+
+
+```{r}
+slope <- coef(mod) %>% pluck('x')
+
+slope
+```
+
+```{r}
+(1 / slope) / (60 * 60 * 24 * 365) 
+```
+>Repeat the plot, now using logarithmic scales for both axes. Fit a line, now insisting that the
+coefficient of `log(x)` is 1.0 (Why?) For this, specify
+`lm(log(y) ~ 1 + offset(log(x)), data=hubble)`
+Add this line to the plot. Again, obtain an estimate of the age of the universe. Does this give
+a substantially different estimate for the age of the universe?
+
+```{r}
+mod1 <- lm(log(y) ~ (log(x)), data = hubble)
+
+slope1 <- mod1 %>% coef() 
+
+slope1
+```
+
+## 7. Use of `sapply()` to Give Multiple Graphs
+
+## 8. The Internals of R – Functions are Pervasive
+
+>Exercise 10*
+The internals of the R parser’s handling of arithmetic and related computations are close enough to
+the surface that users can experiment with them. This exercise will take a peek.
+The binary arithmetic operators `+`, `-`, `*`, `/` and `^` are implemented as functions
+
+```{r}
+1 + 2
+
+`+`(1, 2)
+```
+
+# Part V. Data Summary – Traps for the Unwary
+
+## 1. Multi-way Tables
+
+For more information about the data below, read the pdf.
+
+Data are from a study  that compared outcomes for two different types of surgery for kidney stones; **A: open**, which used open surgery, and **B: ultrasound**, which used a small incision, with the stone
+destroyed by ultrasound
+
+```{r}
+stones <- array(c(81, 6, 234, 36, 192, 71, 55, 25), dim = c(2,2, 2), dimnames = list(Sucess = c("yes", "no"), Method = c("open","ultrasound"), Size = c("<2cm", ">=2cm")))
+
+stones
+```
+
+>Determine the success rate that is obtained from combining the data for the two different sizes
+of stone. Also determine the success rates for the two different stone sizes separately
+
+```{r}
+success_rate <- function(x) x[1, ] / colSums(x)
+```
+
+
+```{r}
+# overall success rate
+overall_success_rate <- success_rate(stones[,,1] + stones[,,2])
+
+overall_success_rate
+```
+
+
+```{r}
+# Success rates for the two different stone sizes separately
+stones_success_rate <- stones %>% apply(MARGIN = 3, success_rate)
+
+stones_success_rate
+```
+
+
+
+
+```{r}
+mosaicplot(stones, sort=3:1)
+```
+
+```{r}
+stones %>% modify(function(x) print(x)) 
+```
+### 1.1 Which multi-way table? It can be important!
+
+We will be working with `DAAG::nasCDS`. See `?nasCDS` for more detail about this dataset.
+
+```{r}
+nassCDS
+```
+
+>estimate numbers of front seat passengers alive and dead, classified by airbag use:
+
+```{r}
+airbag_stat <- nassCDS %>% 
+    count(airbag, dead) %>% 
+    pivot_wider(names_from = dead, values_from = n)
+
+airbag_stat
+```
+
+>The proportion of dead, according to airbag use:
+
+```{r}
+airbag_stat %>% 
+    mutate(dead_prop = dead / (alive + dead))
+```
+The above might suggest that the deployment of an airbag substantially reduces the risk of mortality. Consider however:

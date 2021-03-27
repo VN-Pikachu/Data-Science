@@ -1,0 +1,79 @@
+ "Object type comparisons should always use isinstance() instead of comparing types directly."
+
+
+-------------
+isinstance(obj, cls): check if obj is an instance of class cls, or some class derive from cls 
+issubclass(class1, class2) check if class1 is inherited from class 2
+----------------
+callable(obj) to check if obj is callable or not
+-------------------
+repeat tuple: ((1,2),) * 3 --> ((1,2), (1,2), (1,2))
+----------------
+a is b: test if a and b is the same object
+1 is 1 --> True
+-----------------
+enumerate
+-----------------
+hasattr, getattr, setattr, delattr
+--------------------
+os.listdir()
+------------------
+get the name of object: object.__name__
+get the docstring of object: object.__doc__
+get the module name of a function: obj.__module__
+----------------
+for:
+    pass
+else:
+----------------
+while:
+    pass
+else:
+----------------------
+del statement
+del a[2:4] : remove element 2, 3 of array a
+-------------------
+sorted(arr), reversed(arr)
+--------------------
+namespace is a like a dict, it is a mapping from variable to data
+each scope has it's own namespace
+
+e.g:
+    ++++++++++
+a = 5
+def func():
+    a = 7
+    ++++++++++
+for scope of global, key `a` is added to namespace of global with value 5
+for scope of function func, key `a' is added to namespace of that scope with value 7
+--------------
+from random import sample
+sample(population, k)
+------------------
+__getitem__ :e.g: a[5]
+__setitem__  e.g: a[5] = 10 
+------------------
+for class:
+    __getattr__    (e.g: User.name)
+    __setattr__
+--------------------
+class A:
+    pass
+
+to generate an instance of A, call:  object.__new__(A)
+---------------
+str.maketrans: generate a translate table 
+string.translate
+---------------
+from itertools import product
+product([1,2], [3,4]) --> (1,3), (1,4), (2,3), (2,4)
+------------------
+reversed : generate an iterator
+----------------
+range(10) is subscriptable: e.g: range(10)[1] will return 1
+---------------
+an object can be reversed if it has __reverse__ : e.g:  obj[::-1]
+an object is subscriptable if it has __getitem__
+
+
+    

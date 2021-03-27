@@ -1,0 +1,62 @@
+---
+title: "The basic of Data Exploration and Visualization with R"
+author: "Pikachu"
+date: "11/25/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+#Exercise 1: Installing and loading tidyverse
+```{r}
+# install.packages('tidyverse')
+library(tidyverse)
+```
+
+# Exercise 2: Loading and examining a dataset
+Read the contents of a file called
+`Crime_Data.csv`. This file contains approximately 481,000 crime reports from
+Seattle, WA covering a span of approximately 10 years.
+
+```{r}
+crime <- read_csv('./IntroR/Data/Crime_data.csv', 
+                  col_types = cols(`Report Number` = col_double(),
+                                   `Occurred Date` = col_date('%m/%d/%Y'),
+                                   `Occurred Time` = col_double(),
+                                   `Reported Date` = col_date('%m/%d/%Y'),
+                                   `Reported Time` = col_double(),
+                                   `Crime Subcategory` = col_character(),
+                                   `Primary Offense Description` = col_character(),
+                                   Precinct = col_character(),
+                                   Sector = col_character(),
+                                   Beat = col_character(),
+                                   Neighborhood = col_character()),
+                  na = c('UNKNOWN')
+                  )
+crime
+
+# View the tibble in a new tab
+# View(crime)
+```
+Limit the columns to the following: 
+Reported Date, Crime Subcategory , Primary Offense Description, Precinct, Sector, Beat, and Neighborhood. 
+
+```{r}
+variables <- c('Reported Date', 'Crime Subcategory', 'Primary Offense Description',
+               'Precinct', 'Sector', 'Beat', 'Neighborhood')
+dfCrime <- crime %>% select(all_of(variables))
+
+dfCrime
+
+
+```
+
+# Exercise 3: Filtering a dataset
+
+# Exercise 4: Grouping and summarizing a dataset
+
+# Exercise 5: Plotting a dataset
+
+# Exercise 6: Graphing burglaries by month and year
+

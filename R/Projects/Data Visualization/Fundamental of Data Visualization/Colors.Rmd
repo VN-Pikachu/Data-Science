@@ -1,0 +1,66 @@
+---
+title: "Color Scales"
+author: "Pikachu"
+date: "10/28/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(tidyverse)
+library(dslabs)
+library(RColorBrewer)
+```
+
+### Color as a tool to distinguish
+```{r}
+murders <- murders %>%
+  mutate(rate = total / population * 10000) %>%
+  mutate(state = reorder(state, rate))
+
+
+murders %>% ggplot(aes(state, rate, fill = region)) +
+  geom_col(color = 'grey80') +
+  scale_fill_brewer(palette = 'Set2') +
+  coord_flip() + 
+  labs(y = 'US Murder rate per 10,000 in 2010',
+       title = 'US Murder') +
+  theme_minimal() + 
+  theme(panel.grid.minor.x = element_blank(),
+        panel.grid.major.y = element_blank(),
+        panel.grid.minor.y = element_blank(),
+        axis.text.y = element_text(size = 5),
+        legend.position = c(.75, 0.5))
+  
+```
+###  Color to represent data values
+
+Color can also be used to represent data values, such as income, temperature, or speed. In this case, we use a *sequential* color scale
+
+```{r}
+get <- function(date, fmt) as.integer(format(date, fmt))
+
+appl_1980_2014 %>%
+  mutate(Date = as.Date(Date, '%Y-%m-%d')) %>%
+  mutate(year = get(Date, '%Y'),
+         month = get(Date, '%m'),
+         day =get(Date, '%d')) %>%
+  filter(year >= 2007) %>%
+  ggplot(aes(day, month, fill = Close)) +
+  geom_tile(color = 'grey80') +
+  scale_y_continuous(breaks = 1:12, labels = month.abb, expand = c(0, 0)) +
+  scale_x_continuous(expand = c(0, 0)) + 
+  ggtitle('Apple Close Price since 2007') + 
+  facet_wrap(~ year) +
+  theme_bw() +
+  theme(axis.ticks.y = element_blank(),
+        axis.text.y = element_text(size = 5))
+```
+Diverging color:
+![](https://clauswilke.com/dataviz/color_basics_files/figure-html/map-Texas-race-1.png)
+### Colors as a tool to highlight
+
+![](https://clauswilke.com/dataviz/color_basics_files/figure-html/popgrowth-US-highlight-1.png)

@@ -1,0 +1,5 @@
+install.packages("devtools")
+devtools::install_github("garrettgman/DSR")
+View(table2)
+table2b <- spread(table2, key = type, value = count)
+View(table2b)

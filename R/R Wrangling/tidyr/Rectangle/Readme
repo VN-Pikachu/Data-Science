@@ -1,0 +1,12 @@
+Rectangling turns deeply nested lists into tidy tibbles. 
+
+-----------------------------------------------
+When to use `unnest_longer` and `unnest_wider`? 
+
+Use it when a cell is a deeply nested list
+-------------------------------------------
+What is the difference of `unnest_longer` and `unnest_wider` to  `unnest`?
+
+Use `unnest` when a cell is a DATA FRAME, a TIBBLE
+Use `unnest_longer`, `unnest_wider` when a cell is a deeply nested list
+

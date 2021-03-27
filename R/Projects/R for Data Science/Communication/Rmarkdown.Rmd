@@ -1,0 +1,40 @@
+---
+title: "Diamond sizes"
+date: '2016-08-25'
+output:
+  html_document: default
+  pdf_document: default
+---
+[Facebook][1]
+```{r setup, include = FALSE}
+library(ggplot2)
+library(dplyr)
+
+smaller <- diamonds %>% 
+  filter(carat <= 2.5)
+```
+
+We have data about `r nrow(diamonds)` diamonds. Only 
+`r nrow(diamonds) - nrow(smaller)` are larger than
+2.5 carats. The distribution of the remainder is shown
+below:
+
+```{r Diamond carat1, echo=, message=FALSE, warning=FALSE}
+smaller %>% 
+  ggplot(aes(carat)) + 
+  geom_freqpoly(binwidth = 0.01)
+```
+
+
+[1]: http://facebook.com
+
+
+```{r eval = F}
+# This code will not be evaluated 
+iris %>% ggplot(aes(Sepal.Length, Sepal.Width)) + geom_point()
+```
+
+```{r}
+knitr::kable(mtcars[1:5, ], caption = 'A table')
+```
+

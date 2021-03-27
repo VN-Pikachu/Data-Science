@@ -1,0 +1,7 @@
+dfWildfires <- read_csv("StudyArea.csv", col_types = list(UNIT = col_character()), col_names = TRUE)
+df <- select(dfWildfires, ORGANIZATI, STATE, YEAR_, TOTALACRES, CAUSE)
+dfWildfires <- filter(dfWildfires, TOTALACRES >= 1000)
+ggplot(dfWildfires, aes(TOTALACRES)) + geom_density()
+ggplot(dfWildfires, aes(log(TOTALACRES))) + geom_density()
+ggplot(dfWildfires, aes(x=YEAR_, y=log(TOTALACRES))) + geom_point() + geom_density_2d()
+ggplot(dfWildfires, aes(x=YEAR_, y=log(TOTALACRES))) + geom_density_2d()  + stat_density_2d(geom="raster", aes(fill=..density..), contour=FALSE)

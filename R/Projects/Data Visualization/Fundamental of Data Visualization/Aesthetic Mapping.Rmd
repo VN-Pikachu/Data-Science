@@ -1,0 +1,47 @@
+---
+title: "2. Mapping Data onto Aesthetics"
+author: "Pikachu"
+date: "10/28/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(tidyverse)
+library(gridExtra)
+```
+
+
+### Aesthetics and types of data
+
+![](https://clauswilke.com/dataviz/aesthetic_mapping_files/figure-html/common-aesthetics-1.png)
+
+### Scales map data value onto Aesthetics
+
+```{r}
+mtcars %>%
+  ggplot(aes(disp, mpg, color = hp, size = wt, shape = factor(cyl))) +
+  geom_point() +
+  scale_color_distiller(name = 'Power (hp)', palette = 'Greens') +
+  scale_shape_discrete(name = 'Cylinder') +
+  scale_size_continuous(name = 'Cylinder') + 
+  labs(x = 'Displacement (cu.in)', 
+       y = 'Fuel Efficiency (mpg)',
+       caption = 'Source: Motor Trend, 1974') +
+  theme(legend.box = 'horizontal',
+        legend.position = c(1, 1),
+        legend.justification = c(1, 1),
+        legend.box.background = element_rect(fill = 'white', color = 'white'),
+        legend.box.margin = margin(2, 4, 2, 4),
+        legend.title.align = .5, 
+        panel.ontop = FALSE,
+        panel.grid = element_line(color = 'grey80'),
+        panel.background = element_blank(),
+        axis.line = element_line(size = 1))
+
+```
+Figure 2.5: Fuel efficiency versus displacement, for 32 cars (1973–74 models). This figure uses five separate scales to represent data: (i) the x axis (displacement); (ii) the y axis (fuel efficiency); (iii) the color of the data points (power); (iv) the size of the data points (weight); and (v) the shape of the data points (number of cylinders). Four of the five variables displayed (displacement, fuel efficiency, power, and weight) are numerical continuous. The remaining one (number of cylinders) can be considered to be either numerical discrete or qualitative ordered. Data source: Motor Trend, 1974.
+

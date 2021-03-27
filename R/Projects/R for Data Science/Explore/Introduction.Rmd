@@ -1,0 +1,13 @@
+---
+title: "Introduction"
+author: "Pikachu"
+date: "11/26/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Introduction
+**Data Exploration** is the art of looking at the data, rapidly generate hypotheses about the data, quickly testing them and repeating again and again. The goal of **Data Exploration** is to generate many promise leads that you can later explore in depth.

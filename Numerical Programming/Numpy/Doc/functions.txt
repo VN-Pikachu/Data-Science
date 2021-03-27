@@ -1,0 +1,50 @@
+ufunc:
+    all, any, apply_along_axis, argmax, argmin, argsort, average, bincount, ceil, clip, conj, corrcoef, cov, cross, cumprod, cumsum, diff, dot, floor, inner, invert, lexsort, max, maximum, mean, median, min, minimum, nonzero, outer, prod, re, round, sort, std, sum, trace, transpose, var, vdot, vectorize, where
+
+-----------------------------------------------------------------------------------------------------------------------------------------
+The dots (...) represent as many colons as needed to produce a complete indexing tuple. For example, if x is an array with 5 axes, then
+
+x[1,2,...] is equivalent to x[1,2,:,:,:],
+
+x[...,3] to x[:,:,:,:,3] and
+
+x[4,...,5,:] to x[4,:,:,5,:].
+----------------------------------------------------------------------------------------------------------------------------------
+The reshape function returns its argument with a modified shape, whereas the ndarray.resize method modifies the array itself:
+
+------------------------------------------------------------------------------------
+all function summary:
+https://numpy.org/devdocs/reference/routines.html#routines
+
+
+--------------------------------------------------------------------------------------
+Functions and Methods Overview
+Here is a list of some useful NumPy functions and methods names ordered in categories. See Routines for the full list.
+
+Array Creation
+arange, array, copy, empty, empty_like, eye, fromfile, fromfunction, identity, linspace, logspace, mgrid, ogrid, ones, ones_like, r_, zeros, zeros_like
+
+Conversions
+ndarray.astype, atleast_1d, atleast_2d, atleast_3d, mat
+
+Manipulations
+array_split, column_stack, concatenate, diagonal, dsplit, dstack, hsplit, hstack, ndarray.item, newaxis, ravel, repeat, reshape, resize, squeeze, swapaxes, take, transpose, vsplit, vstack
+
+Questions
+all, any, nonzero, where
+
+Ordering
+argmax, argmin, argsort, max, min, ptp, searchsorted, sort
+
+Operations
+choose, compress, cumprod, cumsum, inner, ndarray.fill, imag, prod, put, putmask, real, sum
+
+Basic Statistics
+cov, mean, std, var
+
+Basic Linear Algebra
+cross, dot, outer, linalg.svd, vdot
+
+----------------------------------------------------------------------------------------------
+There are two popular ways to flatten an array: .flatten() and .ravel(). The primary difference between the two is that the new array created using ravel() is actually a reference to the parent array (i.e., a “view”). This means that any changes to the new array will affect the parent array as well. Since ravel does not create a copy, it’s memory efficient.
+    

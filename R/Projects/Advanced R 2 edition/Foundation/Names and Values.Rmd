@@ -1,0 +1,281 @@
+---
+title: "Names and Values"
+author: "Pikachu"
+date: "12/11/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r}
+library(tidyverse)
+library(lobstr)
+```
+
+# 2.1 Introduction
+
+whenever you modify a vector, you’re almost certainly creating a new, modified vector
+
+# 2.2 Binding basics
+
+>Access object's idetifier with `**lobstr::obj_addr**`
+
+```{r}
+# x and y poin to the same address
+x <- c(1, 2, 3)
+
+y <- x
+
+x %>% obj_addr()
+y %>% obj_addr()
+```
+
+## 2.2.1 Non-syntactic names
+
+```{r}
+`this is a non syntatic name` <- 3
+`this is a non syntatic name`
+```
+
+## 2.2.3 Exercises
+
+>1. Explain the relationship between `a`, `b`, `c` and `d` in the following code:
+
+```{r include = F}
+a <- 1:10
+b <- a
+c <- b
+d <- 1:10
+```
+`a`, `b` and `c` point to the same memory address
+
+```{r}
+obj_addr(a)
+obj_addr(b)
+obj_addr(c)
+obj_addr(d)
+```
+```{r}
+obj_addrs(list(a, b, c, d)) 
+
+```
+
+
+
+>2. The following code accesses the mean function in multiple ways. Do they all point to the same underlying function object? Verify this with `lobstr::obj_addr()``.
+
+```{r include = F}
+mean
+base::mean
+get("mean")
+evalq(mean)
+match.fun("mean")
+```
+
+They all point to the same underlying function object(the same memory address)
+
+```{r}
+obj_addr(mean)
+obj_addr(base::mean)
+obj_addr(get('mean')) 
+obj_addr(evalq(mean))
+obj_addr(match.fun('mean'))
+
+```
+
+
+
+>3. By default, base R data import functions, like `read.csv()``, will automatically convert non-syntactic names to syntactic ones. Why might this be problematic? What option allows you to suppress this behaviour?
+
+Use `tibble`
+
+>4. What rules does `make.names()` use to convert non-syntactic names into syntactic ones?
+
+Read `?make.names()`
+
+>5. I slightly simplified the rules that govern syntactic names. Why is `.123e1`` not a syntactic name? Read `?make.names` for the full details.
+
+# 2.3 Copy-on-modify
+
+R objects are immutable. Consider this example:
+
+```{r}
+x <- c(1, 2, 3)
+y <- x
+
+# x and y share the same memory address
+obj_addrs(list(x, y)) %>% unique()
+
+# modify y
+y[1] <- -1
+
+# y changed
+y
+# x does not change
+x
+
+# now the address of y changed
+obj_addrs(list(x, y))
+```
+
+```{r}
+a <- c(1, 2, 3)
+obj_size(a)
+b <- a 
+# a and b reference to the same object
+# so obj_size(a, b) is equal to obj_size(a)
+obj_size(a, b)
+
+b[[1]] <- 999
+
+# when you modify, copy-on-modify will occur, create a new vector
+# Now a and b do not share reference
+# obj_size(a, b) will be doubled
+obj_size(a, b)
+```
+
+
+## 2.3.1 `tracemem()`
+
+From then on, whenever that object is copied, `tracemem()` will print a message telling you which object was copied, its new address, and the sequence of calls that led to the copy:
+
+```{r}
+x <- c(1, 2, 3)
+
+tracemem(x)
+
+y <- x
+
+y[1] <- 3
+
+
+```
+>`untracemem()` is the opposite of `tracemem`
+
+## 2.3.2 Function calls
+
+## 2.3.3 List
+
+## 2.3.4 Data frames
+
+## 2.3.5 Character vectors
+
+## 2.3.6 Exercises
+
+>1. Why is `tracemem(1:10)` not useful?
+
+It is not useful because when `1:10` is called, an object with an address in memory in created. But is is not bounded to a name. Therefore, this object can't not be called or manipulated from R.
+
+```{r}
+obj_addr(1:10)
+```
+
+
+>2. Explain why `tracemem()` shows two copies when you run this code. Hint: carefully look at the difference between this code and the code shown earlier in the section.
+
+```{r}
+x <- c(1L, 2L, 3L)
+tracemem(x)
+
+x[[3]] <- 4
+```
+Initially the vector `x` has integer type. The replacement call assigns a double to the third element of `x`, which triggers copy-on-modify.
+
+>3. Sketch out the relationship between the following objects:
+
+```{r }
+a <- 1:10
+b <- list(a, a)
+c <- list(b, a, 1:10)
+
+# reference tree
+ref(c)
+```
+
+>4. What happen when you run this code?
+
+```{r include=F}
+x <- list(1:10)
+x[[2]] <- x
+```
+
+# 2.4 Object size 
+
+You can find out how much memory an object takes with `lobstr::obj_size()`:
+
+```{r}
+obj_size(letters)
+
+obj_size(ggplot2::diamonds)
+```
+Since the elements of lists are references to values, the size of a list might be much smaller than you expect:
+
+```{r}
+x <- rnorm(1e6)
+
+obj_size(x)
+
+y <- list(x, x, x)
+obj_size(y)
+```
+`y` is only `r obj_size(y) - obj_size(x)` bigger than `x`. That's the size of an empty list with 3 elements:
+
+```{r}
+list(NULL, NULL, NULL) %>% obj_size()
+```
+
+Similarly, because R uses a global string pool character vectors take up less memory than you might expect: repeating a string 100 times does not make it take up 100 times as much memory.
+
+```{r}
+fruit <- 'banana'
+
+obj_size(fruit)
+
+fruit %>% rep(100) %>% obj_size()
+```
+References also make it challenging to think about the size of individual objects. `obj_size(x) + obj_size(y)` will only equal `obj_size(x, y)` if there are no shared values.
+
+```{r}
+x <- rnorm(100)
+
+y <- x
+
+# object size of x is 848B
+obj_size(x)
+
+# object size of x and y is also 848B, because y references x
+obj_size(x, y)
+```
+nally, R 3.5.0 and later versions have a feature that might lead to surprises: ALTREP, short for __alternative representation__. This allows R to represent certain types of vectors very compactly. The place you are most likely to see this is with : because instead of storing every single number in the sequence, R just stores the first and last number. This means that every sequence, no matter how large, is the same size:
+
+```{r}
+obj_size(1:10)
+
+obj_size(1:1e9)
+```
+
+## 2.4.1 Exercises
+Read the solution book. This is very challenging.
+
+# 2.5 Modify-in-place
+## 2.5.1 Objects with single binding
+## 2.5.2 Environment
+
+Environment are always modified-in-place
+```{r}
+e1 <- rlang::env(a = 1, b = 2, c = 3)
+
+e2 <- e1
+
+e2$b <- -1
+
+# e1$b will also be changed to -1
+e1$b
+```
+
+
+# 2.6 Unbindding and the garbage collector
+

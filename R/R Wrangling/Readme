@@ -1,0 +1,31 @@
+Window functions: n inputs -> n outputs   e.g: cumsum, cummean, ...
+Aggregate functions: n inputs -> 1 output:e.g: mean, max, ...
+---
+Data transformation
+
+Typically, transformations will be suggested by your domain knowledge. However, there are a few transformations that are useful in a surprisingly wide range of circumstances.
+
+• Log-transformations are often useful. They turn multiplicative relationships into additive relationships; they compress data that varies over orders of magnitude; they convert power relationships to linear relationship.
+
+• Relative difference: If you’re interested in the relative difference between two variables, use log(x / y). It’s better than x/y because it’s symmetric: if x < y, x/y takes values [0, 1), but if x > y, x/y takes values (1, Inf).
+
+• Sometimes integrating or differentiating might make the data more interpretable: if you have distance and time, would speed or acceleration
+be more useful? (or vice versa). (Note that integration makes data more
+smooth; differentiation makes it less smooth.)
+
+• Partition a number into magnitude and direction with `abs(x)` and `sign(x)`.
+There are also a few useful ways to transform pairs of variables:
+• Partitioning into overall size and difference is often useful, as seen above.
+
+• If you see a strong trend, use a model to partition it into pattern and
+residuals is often useful. You’ll learn more about that in the next chapter.
+
+• Sometimes it’s useful to change positions to polar coordinates (or vice
+versa): distance `(sqrt(xˆ2 + yˆ2))` and angle `(atan2(y, x))`.
+
+---
+Whenever you do any aggregation, it’s always a good idea to include either:
+- a count `n()`
+- a count of non-missing values `sum(!is.na(x))`.  
+That way you can check that you’re not drawing conclusions based on very small amounts of data.
+---

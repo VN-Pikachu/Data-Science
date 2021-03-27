@@ -1,0 +1,61 @@
+Reference:https://ggplot2.tidyverse.org/reference/index.html
+------------------------
+OVERPLOTTING:
+The biggest potential problem with a scatterplot is overplotting: whenever you have more than a few points, points may be plotted on top of one another. This can severely distort the visual appearance of the plot. There is no one solution to this problem, but there are some techniques that can help. You can add additional information with geom_smooth(), geom_quantile() or geom_density_2d(). If you have few unique x values, geom_boxplot() may also be useful.
+
+Alternatively, you can summarise the number of points at each location and display that in some way, using geom_count(), geom_hex(), or geom_density2d().
+
+Another technique is to make the points transparent (e.g. geom_point(alpha = 0.05)) or very small (e.g. geom_point(shape = ".")).
+
+------------------------
+ggplot(tips, aes(total_bill, tip), color = sex):   
+using color = sex is the same as in seaborn, set hue = 'sex'
+different hue will have different EDGE_COLOR
+
+
+ggplot(tips, aes(total_bill, tip), fill = sex):
+`fill = sex` working like `hue = "sex"` in seaborn
+different hue will have different FACE_COLOR
+----------------------------
+coord_trans
+scale_x_log10
+x_lim
+y_lim
+---------------------------
+normalize: 
+aes(y = after_stat(density))
+
+do not normalize, keep frequency:
+aes(y = after_stat(count))
+---------------
+In ggplot2, Most marker will not have facecolor, so try to set the value for edgecolor first, then facecolor
+--------------
+grammar:
+size: linewidth
+linetype: linestyle
+stroke: marker linewidth
+color: edgecolor
+fill: facecolor
+shape: marker
+----------------------
+horizontal alignment:
+center: hjust = 0.5
+left: hjust = 0
+right: hjust = 1
+
+vertical alignment:
+bottom: vjust = 0
+center: vjust = 0.5
+top: vjust = 1
+------------------------
+transparent background: fill = NA
+---------------------------
+facet_grid(scales = 'fixed'): sharex = True, sharey = True in MATPLOTLIB
+facet_grid(scales = 'free_x'): sharex = False in MATPLOTLIB
+facet_grid(scales = 'free_y'): sharey = False in MATPLOTLIB
+facet_grid(scales = 'free'): sharex = False, sharey = False in MATPLOTLIB
+--------------------------
+ggrepel:geom_text_repel 
+Use this function to plot text (it will automatically handle overlapping text by reposition the texts)
+
+

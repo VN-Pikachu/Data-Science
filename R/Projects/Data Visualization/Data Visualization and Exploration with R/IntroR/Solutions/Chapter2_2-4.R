@@ -1,0 +1,8 @@
+dfCrime <- read_csv("Crime_Data.csv", col_names = TRUE)
+nrow(dfCrime)
+View(dfCrime)
+dfCrime <- select(dfCrime, 'Reported Date', 'Crime Subcategory', 'Primary Offense Description', 'Precinct', 'Sector', 'Beat', 'Neighborhood')
+dfCrime2 <- filter(dfCrime, Neighborhood == 'QUEEN ANNE')
+dfCrime <- group_by(dfCrime, Beat)
+dfCrime <- summarise(dfCrime, n = n())
+ggplot(data=dfCrime) + geom_col(mapping = aes(x=Beat, y=n), fill="red")

@@ -1,0 +1,12 @@
+library(readr)
+library(dplyr)
+library(ggplot2)
+
+dfWildfires <- read_csv("StudyArea.csv", col_types = list(UNIT = col_character()), col_names = TRUE)
+df <- select(dfWildfires, ORGANIZATI, STATE, YR = YEAR_, ACRES = TOTALACRES, CAUSE)
+df <- filter(df, ACRES >= 1000)
+df <- mutate(df, DECADE = ifelse(YR %in% 1980:1989, "1980-1989", ifelse(YR %in% 1990:1999, "1990-1999", ifelse(YR %in% 2000:2009, "2000-2009", ifelse(YR %in% 2010:2016, "2010-2016", "-99")))))
+grp <- group_by(df, DECADE)
+sm <- summarize(grp, mean(ACRES))
+names(sm) <- c("DECADE", "MEAN_ACRES_BURNED")
+ggplot(data=sm) + geom_col(mapping = aes(x=DECADE, y=MEAN_ACRES_BURNED), fill="red")

@@ -1,0 +1,6 @@
+dfFires <- read_csv("StudyArea.csv", col_types = list(UNIT = col_character()), col_names = TRUE)
+df1k <- filter(dfFires, TOTALACRES >= 1000, YEAR_ == 2016)
+df1k <- select(df1k, "NAME" = "FIRENAME", "ACRES" = "TOTALACRES", "YR" = "YEAR_")
+arrange(df1k, ACRES)
+arrange(df1k, desc(ACRES))
+View(arrange(df1k, desc(ACRES)))

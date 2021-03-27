@@ -1,0 +1,97 @@
+---
+title: "Creating Maps with R"
+author: "Eric Pimpler"
+date: "7/18/2018"
+output: html_document
+
+---
+
+The `ggmap` package enables the visualization of spatial data and spatial statistics in a map format using the layered approach of `ggplot2`.  This package also includes basemaps that give your visualizations context including Google Maps, Open Street Map, Stamen Maps, and CloudMade maps.  In addition, utility functions are provided for accessing various Google services including Geocoding, Distance Matrix, and Directions.
+
+The `ggmap` package is based on `ggplot2`, which means it will take a layered approach and will consist of the same five components found in `ggplot2`.  These include a default dataset with aesthetic mappings where x is longitude, y is latitude, and the coordinate system is fixed to Mercator.  Other components include one or more layers defined with a geometric object and statistical transformation, a scale for each aesthetic mapping, coordinate system, and facet specification.  Because `ggmap` is built on `ggplot2` it has access to the full range of `ggplot2` functionality.
+
+In this exercise you'll learn how to use the `ggmap` package to plot various types of spatial visualizations.
+
+##Step 1: Creating a Basemap
+There are two basic steps to create a map with `ggmap`.  The details are more complex than these two steps might imply, but in general you just need to download the map raster and then plot operational data on the basemap.  Step 1 is to download the map raster, also known as the basemap.  This is accomplished using the `get_map()` function, which can be used to create a basemap from Google, Stamen, Open Street Map, or CloudMade.  You'll learn how to do that in this step.  In a future step you'll learn how to add and style operational data in various ways.
+
+1. First, load the libraries that we'll need for this exercise
+
+```{r libs}
+library(ggplot2)
+library(ggmap)
+library(readr)
+library(dplyr)
+```
+2. Create a variable called `myLocation` and set it to `California`.  Call the `get_map()` function with a zoom level of 6, and plot the map using the `ggmap()` function, passing in a reference to the variable returned by the `get_map()` function.  The default map type is Google Maps with a style of Terrain. 
+
+```{r error=TRUE, warning=TRUE, message=TRUE}
+myLocation <- 'California'
+myMap <- get_map(location = myLocation, zoom = 6)
+ggmap(myMap)
+```
+3. The code you see below will create a Google satellite basemap layer. Other basemap layers include Stamen, OSM, and CloudMade.
+```{r error=TRUE, warning=TRUE, message=TRUE}
+myMap <- get_map(location = myLocation, zoom = 6, source="google", maptype="satellite")
+ggmap(myMap)
+```
+4. There are a number of ways that you can define the input location: longitude/latitude coordinate pair, a character string, or a bounding box.  The character string tends to be a more practical solution in many situations since you can simply pass in the name of the location.  For example, you could define the location as Houston Texas or The White House or The Grand Canyon.  When a character string is passed to the location parameter it is then passed to the geocoding service to obtain the latitude/longitude coordinate pair.  Add the code you see below to see how passing in a character string works.
+```{r error=TRUE, warning=TRUE, message=TRUE}
+myMap <- get_map(location = "Grand Canyon, Arizona", zoom = 11)
+ggmap(myMap)
+```
+The zoom level can be set between 3 and 21 with 3 representing a continent level view, and 21 representing a building level view.  
+
+##Step 2: Adding Operational Data Layers
+`ggmap()` returns a `ggplot` object, meaning that it acts as a base layer in the `ggplot2` framework.  This allows for the full range of `ggplot2` capabilities meaning that you can plot points on the map, add contours and 2D heat maps, and more.  We'll exam-ine some of these capabilities in this section.
+1. For this section we'll use the historical wildfire information found in the StudyArea.csv file.  Load this dataset using the `read_csv()` function.  You can download this file at: https://www.dropbox.com/s/9ouh21a6ym62nsl/StudyArea.csv?dl=0
+
+```{r load_data, error=TRUE, warning=TRUE, message=TRUE}
+dfWildfires <- read_csv("~/Desktop/IntroR/Data/StudyArea_SmallFile.csv", col_types = list(FIRENUMBER = col_character(), UNIT = col_character()), col_names = TRUE)
+```
+2. Initially we'll just load the wildfire events as points.  Add  the code you see below to produce a map of California that displays wildfires from the years 1980-2016 that burned more than 1,000 acres.
+```{r point_map, error=TRUE, warning=TRUE, message=TRUE}
+myLocation <- 'California'
+#get the basemap
+myMap <- get_map(location = myLocation, zoom = 6)
+# use the select() function to limit the columns from the data frame
+df <- select(dfWildfires, STATE, YEAR_, TOTALACRES, DLATITUDE, DLONGITUDE)
+#use the filter() function to get only fires in California with acres
+#burned greater than 1000
+df <- filter(df, TOTALACRES >= 1000 & STATE == 'California')
+#produce the final map
+ggmap(myMap) + geom_point(data=df, aes(x = DLONGITUDE, y = DLATITUDE))
+```
+3.	Now let's do something a little more interesting. First, use the `dplyr` `mutate()` function to group the fires by decade.
+```{r error=TRUE, warning=TRUE, message=TRUE}
+df <- mutate(df, DECADE = ifelse(YEAR_ %in% 1980:1989, "1980-1989", ifelse(YEAR_ %in% 1990:1999, "1990-1999", ifelse(YEAR_ %in% 2000:2009, "2000-2009", ifelse(YEAR_ %in% 2010:2016, "2010-2016", "-99")))))
+```
+4.	Next, color code the wildfires by `DECADE` and create a graduated symbol map based on the size of each fire. The `colour` property defines the column to use for grouping, and the `size` property defines the column to use for the size of each symbol.
+```{r, error=TRUE, warning=TRUE, message=TRUE}
+ggmap(myMap) + geom_point(data=df, aes(x = DLONGITUDE, y = DLATITUDE, colour= DECADE, size = TOTALACRES))
+```
+5.	Let's change the map view to focus more on southern California, and in particular the area just north of Los Angeles.  
+```{r error=TRUE, warning=TRUE, message=TRUE}
+myMap <- get_map(location = "Santa Clarita, California", zoom = 10)
+ggmap(myMap) + geom_point(data=df, aes(x = DLONGITUDE, y = DLATITUDE, colour= DECADE, size = TOTALACRES))
+```
+6.	Next we'll add contour and heat layers.  The `geom_density2d()` function is used to create the contours while the `stat_density2d()` function creates the heat map.  Add the following code to produce the map you see below.  You can experiment with the colors using the `scale_fill_gradient(low and high)` properties.  Here we've set them to green and red respectively, but you may want to change the color scheme.  
+```{r error=TRUE, warning=TRUE, message=TRUE}
+myMap <- get_map(location = "Santa Clarita, California", zoom = 8)
+
+ggmap(myMap, extent = "device") + geom_density2d(data = df, aes(x = DLONGITUDE, y = DLATITUDE), size = 0.3) + stat_density2d(data = df, aes(x = DLONGITUDE, y = DLATITUDE, fill = ..level.., alpha = ..level..), size = 0.01, bins = 16, geom = "polygon") + scale_fill_gradient(low = "green", high = "red") + scale_alpha(range = c(0, 0.3), guide = FALSE)
+
+```
+7.	If you'd prefer to see the heat map without contours, the code can be simplified as follows:
+```{r error=TRUE, warning=TRUE, message=TRUE}
+ggmap(myMap, extent = "device") + stat_density2d(data = df, aes(x = DLONGITUDE, y = DLATITUDE, fill = ..level.., alpha = ..level..), size = 0.01,bins = 16, geom = "polygon") + scale_fill_gradient(low = "green", high = "red") + scale_alpha(range = c(0, 0.3), guide = FALSE)
+```
+8.	Finally, let's create a facet map that depicts hot spots for each year in the current decade.  Add the following code to see how this works.  The dataset contains information up through the year 2016.  
+```{r error=TRUE, warning=TRUE, message=TRUE}
+df <- filter(dfWildfires, STATE == 'California')
+df <- filter(df, YEAR_ %in% c(2010, 2011, 2012, 2013, 2014, 2015, 2016))
+myMap <- get_map(location = "Santa Clarita, California", zoom = 9)
+
+ggmap(myMap, extent = "device") + stat_density2d(data = df, aes(x = DLONGITUDE, y = DLATITUDE, fill = ..level.., alpha = ..level..), size = 0.01,bins = 16, geom = "polygon") + scale_fill_gradient(low = "green", high = "red") + scale_alpha(range = c(0, 0.3), guide = FALSE) + facet_wrap(~ YEAR_)
+
+```

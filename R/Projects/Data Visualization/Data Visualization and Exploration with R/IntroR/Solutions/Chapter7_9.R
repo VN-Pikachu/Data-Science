@@ -1,0 +1,8 @@
+dfWildfires <- read_csv("StudyArea.csv", col_types = list(UNIT = col_character()), col_names = TRUE)
+df <- select(dfWildfires, ORGANIZATI, STATE, YEAR_, TOTALACRES, CAUSE)
+dfWildfires <- filter(dfWildfires, TOTALACRES >= 5000)
+grpWildfires <- group_by(dfWildfires, ORGANIZATI)
+ggplot(data=grpWildfires, mapping = aes(x=ORGANIZATI, y=log(TOTALACRES))) + geom_violin()
+ggplot(data=grpWildfires, mapping = aes(x=ORGANIZATI, y=log(TOTALACRES))) + geom_violin() + geom_jitter(height = 0, width = 0.1)
+ggplot(data=grpWildfires, mapping = aes(x=ORGANIZATI, y=log(TOTALACRES))) + geom_violin() + geom_jitter(height = 0, width = 0.1) + stat_summary(fun.y=mean, geom="point", size=2, color="red")
+ggplot(data=grpWildfires, mapping = aes(x=ORGANIZATI, y=log(TOTALACRES))) + geom_violin() + geom_boxplot(width=0.1)
